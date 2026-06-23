@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fps",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/Oly/Desktop/chore/fps-game", "-p", "3456", "--no-clipboard"],
+      "port": 3456
+    }
+  ]
+}
