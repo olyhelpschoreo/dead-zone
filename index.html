@@ -7,9 +7,16 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;overflow:hidden;cursor:none;font-family:'Courier New',monospace;user-select:none}
 canvas#main{display:block;image-rendering:pixelated}
-#start-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default}
-#start-screen h1{font-size:72px;color:#4a0;text-shadow:0 0 30px #4a0,0 0 60px #280;margin-bottom:10px;letter-spacing:8px}
-#start-screen h2{font-size:18px;color:#682;margin-bottom:40px;letter-spacing:4px}
+#home-base{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default}
+#home-base h1{font-size:72px;color:#4a0;text-shadow:0 0 30px #4a0,0 0 60px #280;margin-bottom:6px;letter-spacing:8px}
+#home-base h2{font-size:16px;color:#682;margin-bottom:18px;letter-spacing:6px}
+#home-best{color:#8c4;font-size:15px;letter-spacing:2px;margin-bottom:22px}
+#deploy-btn{background:#4a0;color:#021;border:none;font-family:inherit;font-weight:bold;font-size:30px;letter-spacing:4px;padding:14px 60px;border-radius:6px;cursor:pointer;box-shadow:0 0 24px #4a0;transition:transform .1s,box-shadow .2s}
+#deploy-btn:hover{transform:scale(1.05);box-shadow:0 0 42px #6c0,0 0 90px #280}
+#home-tabs{display:flex;gap:12px;margin:18px 0 26px}
+.tab-btn{background:#111;color:#6a4;border:1px solid #2a1;font-family:inherit;font-size:14px;letter-spacing:2px;padding:8px 20px;border-radius:5px;cursor:pointer}
+.tab-btn:disabled{opacity:.4;cursor:default;border-color:#333;color:#555}
+.tab-btn:not(:disabled):hover{background:#1a2a10;box-shadow:0 0 14px #2a1}
 .controls{color:#888;font-size:14px;margin:4px 0}
 .controls span{color:#8c4;display:inline-block;width:120px;text-align:right;margin-right:10px}
 .click-start{color:#6b2;font-size:28px;margin-top:40px;animation:pulse 1.2s infinite;letter-spacing:4px}
@@ -22,9 +29,16 @@ canvas#main{display:block;image-rendering:pixelated}
 </head>
 <body>
 <canvas id="main"></canvas>
-<div id="start-screen">
+<div id="home-base">
   <h1>DEAD ZONE</h1>
-  <h2>SURVIVE THE ZOMBIE APOCALYPSE</h2>
+  <h2>HOME BASE</h2>
+  <div id="coin-bank" style="color:#fc0;font-size:26px;margin:0 0 6px;letter-spacing:2px;text-shadow:0 0 14px #a80">🪙 0</div>
+  <div id="home-best">BEST: 0 pts · Wave 0</div>
+  <button id="deploy-btn">DEPLOY ▸</button>
+  <div id="home-tabs">
+    <button class="tab-btn" disabled>🔫 ARSENAL (soon)</button>
+    <button class="tab-btn" disabled>📦 CASES (soon)</button>
+  </div>
   <div class="controls"><span>W A S D</span> Move</div>
   <div class="controls"><span>MOUSE</span> Aim</div>
   <div class="controls"><span>LEFT CLICK</span> Fire</div>
@@ -32,12 +46,11 @@ canvas#main{display:block;image-rendering:pixelated}
   <div class="controls"><span>R</span> Reload</div>
   <div class="controls"><span>SHIFT</span> Sprint</div>
   <div class="controls"><span>E</span> Interact</div>
-  <div class="click-start">[ CLICK TO BEGIN ]</div>
 </div>
 <div id="death-screen">
   <h1>DEVOURED</h1>
   <div id="death-stats"></div>
-  <div id="death-restart">[ CLICK TO RESTART ]</div>
+  <div id="death-restart">[ RETURN TO BASE ]</div>
 </div>
 
 <script>
@@ -2332,6 +2345,38 @@ const player = {
   moving: false,
 };
 
+// ============================================================
+// PERSISTENCE — saved across runs (localStorage; works on CrazyGames too)
+// ============================================================
+const SAVE_KEY = 'deadzone_save_v1';
+const DEFAULT_SAVE = {
+  coins: 0,
+  bestScore: 0,
+  bestWave: 0,
+  ownedWeapons: [0],        // weapon indices owned (Pistol always free)
+  ownedSkins: [],           // skin ids unlocked from cases
+  equippedWeaponSkin: null, // skin id applied to guns
+  equippedHudTheme: null,   // HUD color theme id
+};
+let save = (function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? Object.assign({}, DEFAULT_SAVE, JSON.parse(raw)) : Object.assign({}, DEFAULT_SAVE);
+  } catch (e) { return Object.assign({}, DEFAULT_SAVE); }
+})();
+function writeSave() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ }
+}
+// Coins awarded for a run, from score + waves survived (tunable)
+function coinsForRun() { return Math.floor(player.score / 50) + wave * 20; }
+function updateCoinDisplays() {
+  const el = document.getElementById('coin-bank');
+  if (el) el.textContent = '🪙 ' + save.coins;
+  const best = document.getElementById('home-best');
+  if (best) best.textContent = 'BEST: ' + save.bestScore + ' pts · Wave ' + save.bestWave;
+}
+updateCoinDisplays();
+
 let enemies = [];
 let pickups = [];
 let projectiles = []; // rockets in flight
@@ -2342,7 +2387,7 @@ let r_halfH = 0, r_dirX = 0, r_dirY = 0, r_planeX = 0, r_planeY = 0, r_pitchOffs
 let notifications = [];
 let killFeed = [];
 let wave = 0, waveDelay = 0, waveActive = false;
-let gameStarted = false, gameOver = false;
+let gameStarted = false, gameOver = false, atHome = true, worldInitialized = false;
 let frameCount = 0, fps = 60, lastFpsTime = 0, fpsCounter = 0;
 
 // Input
@@ -4758,13 +4803,20 @@ function hurtPlayer(dmg, fromAngle) {
     player.health = 0;
     gameOver = true;
     document.exitPointerLock();
+    const earnedCoins = coinsForRun();
+    save.coins += earnedCoins;
+    if (player.score > save.bestScore) save.bestScore = player.score;
+    if (wave > save.bestWave) save.bestWave = wave;
+    writeSave();
+    updateCoinDisplays();
     const ds = document.getElementById('death-screen');
     ds.style.display = 'flex';
     document.getElementById('death-stats').innerHTML =
       `Score: ${player.score}<br>Survived to Wave: ${wave}<br>Zombies Killed: ${player.kills}<br>` +
       `Best Kill Streak: ${player.bestCombo}x<br>` +
       `Accuracy: ${player.shotsFired > 0 ? Math.floor(player.shotsHit / player.shotsFired * 100) : 0}%<br>` +
-      `Total Damage: ${Math.floor(player.totalDamageDealt)}`;
+      `Total Damage: ${Math.floor(player.totalDamageDealt)}<br>` +
+      `<span style="color:#fc0">Coins earned: +${earnedCoins} &nbsp;&middot;&nbsp; Bank: 🪙 ${save.coins}</span>`;
   }
 }
 
@@ -5209,13 +5261,10 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-document.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
-
-  if (!gameStarted) {
-    gameStarted = true;
-    document.getElementById('start-screen').style.display = 'none';
-    mainCanvas.requestPointerLock();
+// Start (or restart) a run from the Home Base. World assets init once; the
+// rest resets every deploy. Called by the DEPLOY button.
+function startRun() {
+  if (!worldInitialized) {
     initAudio();
     startAmbience();
     addTorchLights();
@@ -5223,35 +5272,50 @@ document.addEventListener('mousedown', e => {
     generateWallDecals();
     initZoneParticles();
     initRain();
-    return;
+    worldInitialized = true;
   }
+  player.x = 16; player.y = 16; player.angle = 0; player.pitch = 0;
+  player.health = 100; player.armor = 0;
+  player.weaponIdx = 0;
+  player.weaponAmmo = [Infinity, 0, 0, 0];
+  player.hasWeapon = [true, false, false, false];
+  player.score = 0; player.kills = 0; player.combo = 0; player.comboTimer = 0;
+  player.bestCombo = 0; player.totalDamageDealt = 0; player.shotsFired = 0; player.shotsHit = 0;
+  player.reloading = false; player.shootCooldown = 0;
+  player.shakeAmount = 0;
+  player.damageDir = [];
+  enemies = []; pickups = []; projectiles = []; particles = [];
+  notifications = []; killFeed = [];
+  wave = 0; waveDelay = 60; waveActive = false;
+  gameOver = false;
+  gameStarted = true;
+  atHome = false;
+  document.getElementById('home-base').style.display = 'none';
+  document.getElementById('death-screen').style.display = 'none';
+  mainCanvas.requestPointerLock();
+}
 
-  if (gameOver) {
-    // Reset game
-    gameOver = false;
-    document.getElementById('death-screen').style.display = 'none';
-    player.x = 16; player.y = 16; player.angle = 0; player.pitch = 0;
-    player.health = 100; player.armor = 0;
-    player.weaponIdx = 0;
-    player.weaponAmmo = [Infinity, 0, 0, 0];
-    player.hasWeapon = [true, false, false, false];
-    player.score = 0; player.kills = 0; player.combo = 0; player.comboTimer = 0;
-    player.bestCombo = 0; player.totalDamageDealt = 0; player.shotsFired = 0; player.shotsHit = 0;
-    player.reloading = false; player.shootCooldown = 0;
-    player.shakeAmount = 0;
-    player.damageDir = [];
-    enemies = []; pickups = []; projectiles = []; particles = [];
-    notifications = []; killFeed = [];
-    wave = 0; waveDelay = 60; waveActive = false;
-    mainCanvas.requestPointerLock();
-    return;
-  }
+// Return to the Home Base (from death). The run freezes; coins are already banked.
+function openHome() {
+  gameStarted = false;
+  gameOver = false;
+  atHome = true;
+  document.exitPointerLock();
+  updateCoinDisplays();
+  document.getElementById('death-screen').style.display = 'none';
+  document.getElementById('home-base').style.display = 'flex';
+}
 
+document.getElementById('deploy-btn').addEventListener('click', startRun);
+document.getElementById('death-screen').addEventListener('click', () => { if (gameOver) openHome(); });
+
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (atHome || gameOver) return;       // Home Base / death screen have their own buttons
   if (document.pointerLockElement !== mainCanvas) {
     mainCanvas.requestPointerLock();
     return;
   }
-
   mouseDown = true;
   if (!weapons[player.weaponIdx].auto) fireWeapon();
 });
