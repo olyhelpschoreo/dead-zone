@@ -17,6 +17,20 @@ canvas#main{display:block;image-rendering:pixelated}
 .tab-btn{background:#111;color:#6a4;border:1px solid #2a1;font-family:inherit;font-size:14px;letter-spacing:2px;padding:8px 20px;border-radius:5px;cursor:pointer}
 .tab-btn:disabled{opacity:.4;cursor:default;border-color:#333;color:#555}
 .tab-btn:not(:disabled):hover{background:#1a2a10;box-shadow:0 0 14px #2a1}
+#arsenal{position:fixed;top:0;left:0;width:100%;height:100%;background:#050805;z-index:101;display:none;flex-direction:column;align-items:center;padding:30px 0;cursor:default}
+#arsenal h2{color:#6c2;font-size:26px;letter-spacing:6px;margin-bottom:4px}
+#arsenal-coins{color:#fc0;font-size:20px;margin-bottom:18px;letter-spacing:1px}
+#arsenal-list{width:min(560px,92%);max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:0 4px}
+.wpn-card{display:flex;align-items:center;justify-content:space-between;background:#0d140d;border:1px solid #243524;border-radius:8px;padding:12px 16px}
+.wpn-card.owned{border-color:#4a0;background:#0a160a}
+.wpn-name{color:#cda;font-size:17px;letter-spacing:1px}
+.wpn-stats{color:#693;font-size:12px;margin-top:3px;letter-spacing:1px}
+.wpn-buy{background:#4a0;color:#021;border:none;font-family:inherit;font-weight:bold;font-size:15px;letter-spacing:1px;padding:9px 16px;border-radius:5px;cursor:pointer;min-width:104px}
+.wpn-buy:hover:not(:disabled){box-shadow:0 0 14px #4a0}
+.wpn-buy:disabled{background:#1a2416;color:#566;cursor:default}
+.wpn-card.owned .wpn-buy{background:transparent;color:#6c2;border:1px solid #4a0}
+#arsenal-back{margin-top:18px;background:#111;color:#6a4;border:1px solid #2a1;font-family:inherit;font-size:15px;letter-spacing:2px;padding:10px 28px;border-radius:5px;cursor:pointer}
+#arsenal-back:hover{background:#1a2a10}
 .controls{color:#888;font-size:14px;margin:4px 0}
 .controls span{color:#8c4;display:inline-block;width:120px;text-align:right;margin-right:10px}
 .click-start{color:#6b2;font-size:28px;margin-top:40px;animation:pulse 1.2s infinite;letter-spacing:4px}
@@ -36,16 +50,22 @@ canvas#main{display:block;image-rendering:pixelated}
   <div id="home-best">BEST: 0 pts · Wave 0</div>
   <button id="deploy-btn">DEPLOY ▸</button>
   <div id="home-tabs">
-    <button class="tab-btn" disabled>🔫 ARSENAL (soon)</button>
+    <button class="tab-btn" id="arsenal-tab">🔫 ARSENAL</button>
     <button class="tab-btn" disabled>📦 CASES (soon)</button>
   </div>
   <div class="controls"><span>W A S D</span> Move</div>
   <div class="controls"><span>MOUSE</span> Aim</div>
   <div class="controls"><span>LEFT CLICK</span> Fire</div>
-  <div class="controls"><span>1 2 3 4</span> Switch Weapon</div>
+  <div class="controls"><span>1-9 / SCROLL</span> Switch Weapon</div>
   <div class="controls"><span>R</span> Reload</div>
   <div class="controls"><span>SHIFT</span> Sprint</div>
   <div class="controls"><span>E</span> Interact</div>
+</div>
+<div id="arsenal">
+  <h2>ARSENAL</h2>
+  <div id="arsenal-coins">🪙 0</div>
+  <div id="arsenal-list"></div>
+  <button id="arsenal-back">◂ BACK TO BASE</button>
 </div>
 <div id="death-screen">
   <h1>DEVOURED</h1>
@@ -2309,17 +2329,44 @@ function startAmbience() {
 // ============================================================
 // WEAPON DEFINITIONS
 // ============================================================
+// Each weapon is pure data. `renderStyle` reuses one of the hand-drawn gun
+// models (pistol/shotgun/chaingun/rocket) so new guns need no new art.
+// `price` is the Home Base coin cost; `id` is the stable key saved in ownedWeapons.
 const weapons = [
-  { name: 'Pistol', fireRate: 12, damage: 20, spread: 0.01, ammo: Infinity, maxAmmo: Infinity,
+  { id: 'pistol', name: 'Pistol', price: 0, renderStyle: 'pistol',
+    fireRate: 12, damage: 20, spread: 0.01, ammo: Infinity, maxAmmo: Infinity,
     reloadTime: 0, auto: false, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0,
     color: '#fc0', icon: 'P' },
-  { name: 'Shotgun', fireRate: 30, damage: 12, spread: 0.08, ammo: 8, maxAmmo: 8,
+  { id: 'smg', name: 'SMG "Hornet"', price: 250, renderStyle: 'chaingun',
+    fireRate: 5, damage: 9, spread: 0.05, ammo: 40, maxAmmo: 40,
+    reloadTime: 45, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0,
+    color: '#9cf', icon: 'M' },
+  { id: 'sawedoff', name: 'Sawed-Off', price: 300, renderStyle: 'shotgun',
+    fireRate: 32, damage: 14, spread: 0.16, ammo: 2, maxAmmo: 2,
+    reloadTime: 38, auto: false, pellets: 10, sound: 'shotgun', projSpeed: 0, splashR: 0,
+    color: '#fa4', icon: 'O' },
+  { id: 'shotgun', name: 'Shotgun', price: 350, renderStyle: 'shotgun',
+    fireRate: 30, damage: 12, spread: 0.08, ammo: 8, maxAmmo: 8,
     reloadTime: 45, auto: false, pellets: 8, sound: 'shotgun', projSpeed: 0, splashR: 0,
     color: '#f80', icon: 'S' },
-  { name: 'Chaingun', fireRate: 4, damage: 12, spread: 0.04, ammo: 100, maxAmmo: 100,
+  { id: 'magnum', name: 'Magnum', price: 550, renderStyle: 'pistol',
+    fireRate: 26, damage: 70, spread: 0.005, ammo: 6, maxAmmo: 6,
+    reloadTime: 48, auto: false, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0,
+    color: '#fd6', icon: 'G' },
+  { id: 'ar', name: 'Assault Rifle "Reaper"', price: 800, renderStyle: 'chaingun',
+    fireRate: 7, damage: 16, spread: 0.03, ammo: 30, maxAmmo: 30,
+    reloadTime: 55, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0,
+    color: '#bf6', icon: 'A' },
+  { id: 'chaingun', name: 'Chaingun', price: 1000, renderStyle: 'chaingun',
+    fireRate: 4, damage: 12, spread: 0.04, ammo: 100, maxAmmo: 100,
     reloadTime: 90, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0,
     color: '#ff0', icon: 'C' },
-  { name: 'Rocket', fireRate: 40, damage: 80, spread: 0, ammo: 10, maxAmmo: 10,
+  { id: 'autoshotgun', name: 'Auto-Shotgun "Devastator"', price: 1400, renderStyle: 'shotgun',
+    fireRate: 16, damage: 11, spread: 0.10, ammo: 12, maxAmmo: 12,
+    reloadTime: 65, auto: true, pellets: 7, sound: 'shotgun', projSpeed: 0, splashR: 0,
+    color: '#f96', icon: 'D' },
+  { id: 'rocket', name: 'Rocket Launcher', price: 2000, renderStyle: 'rocket',
+    fireRate: 40, damage: 80, spread: 0, ammo: 10, maxAmmo: 10,
     reloadTime: 60, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.15, splashR: 3,
     color: '#f44', icon: 'R' },
 ];
@@ -2353,7 +2400,7 @@ const DEFAULT_SAVE = {
   coins: 0,
   bestScore: 0,
   bestWave: 0,
-  ownedWeapons: [0],        // weapon indices owned (Pistol always free)
+  ownedWeapons: ['pistol'], // weapon ids owned (Pistol always free)
   ownedSkins: [],           // skin ids unlocked from cases
   equippedWeaponSkin: null, // skin id applied to guns
   equippedHudTheme: null,   // HUD color theme id
@@ -2495,10 +2542,8 @@ function spawnWave() {
   for (let i = 0; i < pickupCount; i++) {
     spawnPickup();
   }
-  // Occasionally spawn weapon pickups
-  if (wave === 2 && !player.hasWeapon[1]) spawnPickup('shotgun_pickup');
-  if (wave === 3 && !player.hasWeapon[2]) spawnPickup('chaingun_pickup');
-  if (wave === 5 && !player.hasWeapon[3]) spawnPickup('rocket_pickup');
+  // Ammo crate every couple of waves (weapons are bought at the Home Base now)
+  if (wave >= 2 && wave % 2 === 0) spawnPickup('ammo');
 }
 
 function spawnPickup(forceType) {
@@ -3639,7 +3684,7 @@ function renderWeapon(W, H) {
 
   const firing = player.shootCooldown > wp.fireRate - 3;
 
-  if (player.weaponIdx === 0) { // Pistol
+  if (wp.renderStyle === 'pistol') { // Pistol-style
     // Hand
     drawHand(0, 30);
     // Grip
@@ -3675,7 +3720,7 @@ function renderWeapon(W, H) {
     mainCtx.fillStyle = '#fff';
     mainCtx.fillRect(-1, -96, 2, 4);
     if (firing) muzzleFlash(0, -100, 12);
-  } else if (player.weaponIdx === 1) { // Shotgun
+  } else if (wp.renderStyle === 'shotgun') { // Shotgun-style
     // Hand on pump grip
     drawHand(0, 25);
     // Wood stock/forend
@@ -3719,7 +3764,7 @@ function renderWeapon(W, H) {
     mainCtx.fillStyle = '#222';
     mainCtx.beginPath(); mainCtx.arc(0, -132, 6, 0, Math.PI * 2); mainCtx.fill();
     if (player.shootCooldown > wp.fireRate - 4) muzzleFlash(0, -138, 22);
-  } else if (player.weaponIdx === 2) { // Chaingun
+  } else if (wp.renderStyle === 'chaingun') { // Chaingun-style
     drawHand(0, 25);
     const rot = frameCount * 0.3;
     // Receiver body
@@ -3769,7 +3814,7 @@ function renderWeapon(W, H) {
       mainCtx.stroke();
     }
     if (player.shootCooldown > 0 && mouseDown) muzzleFlash(0, -148, 10);
-  } else if (player.weaponIdx === 3) { // Rocket launcher
+  } else if (wp.renderStyle === 'rocket') { // Rocket-style
     drawHand(0, 25);
     // Main tube
     const tubeG = mainCtx.createLinearGradient(-20, -80, 20, 10);
@@ -3856,7 +3901,7 @@ function renderHUD(W, H) {
 
   // --- Crosshair (modern dynamic style) ---
   const cx = W/2, cy = H/2;
-  const spread = player.weaponIdx === 1 ? 14 : player.weaponIdx === 2 ? 10 : 6;
+  const spread = wp.renderStyle === 'shotgun' ? 14 : wp.renderStyle === 'chaingun' ? 10 : 6;
   const cs = spread * s;
   const firing = player.shootCooldown > 0;
   const moving = player.moving;
@@ -4567,12 +4612,12 @@ function fireWeapon() {
   player.shootCooldown = wp.fireRate;
   if (wp.ammo !== Infinity) player.weaponAmmo[player.weaponIdx]--;
   player.weaponKickback = 1;
-  player.shakeAmount = Math.max(player.shakeAmount, player.weaponIdx === 3 ? 0.5 : 0.15);
+  player.shakeAmount = Math.max(player.shakeAmount, wp.splashR > 0 ? 0.5 : 0.15);
   player.shotsFired++;
 
   // Spawn muzzle smoke (capped)
   if (smokeParticles.length > 60) smokeParticles.splice(0, 10);
-  const smokeCount = player.weaponIdx === 1 ? 4 : player.weaponIdx === 2 ? 2 : 1;
+  const smokeCount = wp.renderStyle === 'shotgun' ? 4 : wp.renderStyle === 'chaingun' ? 2 : 1;
   for (let i = 0; i < smokeCount; i++) {
     const sd = 0.4 + Math.random() * 0.3;
     smokeParticles.push({
@@ -5023,21 +5068,7 @@ function update() {
           player.armor = Math.min(player.maxArmor, player.armor + 30);
           addNotification('+30 ARMOR', '#48f', 60);
           break;
-        case 'shotgun_pickup':
-          player.hasWeapon[1] = true;
-          player.weaponAmmo[1] = weapons[1].maxAmmo;
-          addNotification('GOT SHOTGUN!', '#f80', 90);
-          break;
-        case 'chaingun_pickup':
-          player.hasWeapon[2] = true;
-          player.weaponAmmo[2] = weapons[2].maxAmmo;
-          addNotification('GOT CHAINGUN!', '#ff0', 90);
-          break;
-        case 'rocket_pickup':
-          player.hasWeapon[3] = true;
-          player.weaponAmmo[3] = weapons[3].maxAmmo;
-          addNotification('GOT ROCKETS!', '#f44', 90);
-          break;
+        // weapon pickups removed — weapons are bought at the Home Base now
       }
       playSound('pickup');
       return false;
@@ -5246,10 +5277,9 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyR') startReload();
 
   // Weapon switching
-  if (e.code === 'Digit1' && player.hasWeapon[0]) { player.weaponIdx = 0; player.reloading = false; }
-  if (e.code === 'Digit2' && player.hasWeapon[1]) { player.weaponIdx = 1; player.reloading = false; }
-  if (e.code === 'Digit3' && player.hasWeapon[2]) { player.weaponIdx = 2; player.reloading = false; }
-  if (e.code === 'Digit4' && player.hasWeapon[3]) { player.weaponIdx = 3; player.reloading = false; }
+  for (let n = 1; n <= 9; n++) {
+    if (e.code === 'Digit' + n && player.hasWeapon[n - 1]) { player.weaponIdx = n - 1; player.reloading = false; }
+  }
 });
 
 document.addEventListener('keyup', e => keys[e.code] = false);
@@ -5277,8 +5307,9 @@ function startRun() {
   player.x = 16; player.y = 16; player.angle = 0; player.pitch = 0;
   player.health = 100; player.armor = 0;
   player.weaponIdx = 0;
-  player.weaponAmmo = [Infinity, 0, 0, 0];
-  player.hasWeapon = [true, false, false, false];
+  player.hasWeapon = weapons.map(w => save.ownedWeapons.includes(w.id));
+  player.hasWeapon[0] = true; // pistol always owned
+  player.weaponAmmo = weapons.map((w, i) => w.ammo === Infinity ? Infinity : (player.hasWeapon[i] ? w.maxAmmo : 0));
   player.score = 0; player.kills = 0; player.combo = 0; player.comboTimer = 0;
   player.bestCombo = 0; player.totalDamageDealt = 0; player.shotsFired = 0; player.shotsHit = 0;
   player.reloading = false; player.shootCooldown = 0;
@@ -5309,6 +5340,51 @@ function openHome() {
 document.getElementById('deploy-btn').addEventListener('click', startRun);
 document.getElementById('death-screen').addEventListener('click', () => { if (gameOver) openHome(); });
 
+// --- Arsenal shop: buy weapons with coins; owned weapons spawn with you ---
+function weaponStatLine(w) {
+  let s = 'DMG ' + (w.pellets > 1 ? (w.damage * w.pellets) + ' (x' + w.pellets + ')' : w.damage);
+  if (w.auto) s += ' · AUTO';
+  if (w.splashR > 0) s += ' · SPLASH';
+  return s;
+}
+function renderArsenal() {
+  document.getElementById('arsenal-coins').textContent = '🪙 ' + save.coins;
+  document.getElementById('arsenal-list').innerHTML = weapons.map(w => {
+    const owned = save.ownedWeapons.includes(w.id);
+    const afford = save.coins >= w.price;
+    const btn = owned
+      ? '<button class="wpn-buy" disabled>OWNED</button>'
+      : '<button class="wpn-buy" data-buy="' + w.id + '"' + (afford ? '' : ' disabled') + '>🪙 ' + w.price + '</button>';
+    return '<div class="wpn-card' + (owned ? ' owned' : '') + '">' +
+      '<div><div class="wpn-name">' + w.name + '</div>' +
+      '<div class="wpn-stats">' + weaponStatLine(w) + '</div></div>' + btn + '</div>';
+  }).join('');
+}
+function openArsenal() {
+  renderArsenal();
+  document.getElementById('home-base').style.display = 'none';
+  document.getElementById('arsenal').style.display = 'flex';
+}
+function closeArsenal() {
+  document.getElementById('arsenal').style.display = 'none';
+  document.getElementById('home-base').style.display = 'flex';
+}
+function buyWeapon(id) {
+  const w = weapons.find(x => x.id === id);
+  if (!w || save.ownedWeapons.includes(id) || save.coins < w.price) return;
+  save.coins -= w.price;
+  save.ownedWeapons.push(id);
+  writeSave();
+  updateCoinDisplays();
+  renderArsenal();
+}
+document.getElementById('arsenal-tab').addEventListener('click', openArsenal);
+document.getElementById('arsenal-back').addEventListener('click', closeArsenal);
+document.getElementById('arsenal-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-buy]');
+  if (b) buyWeapon(b.getAttribute('data-buy'));
+});
+
 document.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   if (atHome || gameOver) return;       // Home Base / death screen have their own buttons
@@ -5329,8 +5405,8 @@ document.addEventListener('wheel', e => {
   if (!gameStarted || gameOver) return;
   const dir = e.deltaY > 0 ? 1 : -1;
   let next = player.weaponIdx;
-  for (let i = 0; i < 4; i++) {
-    next = (next + dir + 4) % 4;
+  for (let i = 0; i < weapons.length; i++) {
+    next = (next + dir + weapons.length) % weapons.length;
     if (player.hasWeapon[next]) { player.weaponIdx = next; player.reloading = false; break; }
   }
 });
