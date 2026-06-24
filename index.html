@@ -717,6 +717,7 @@ function addGoreSplat(x, y, size) {
 // Lightning flash system
 let lightningFlash = 0;
 let hitMarker = 0, hitMarkerKill = false; // crosshair hit feedback
+let beamTimer = 0, beamColor = '#5cf';     // neon laser beam flash
 let lightningTimer = 0;
 
 // Pre-generate starfield (more stars, varied sizes)
@@ -3729,6 +3730,33 @@ function render() {
   // --- HUD (full res) ---
   renderHUD(mw, mh);
 
+  // --- Neon laser beam flash (drawn last so the muzzle-flash overlay can't mask it) ---
+  if (beamTimer > 0) {
+    const bs = Math.min(mw, mh) / 800, bcx = mw / 2, bcy = mh / 2, ba = beamTimer / 5;
+    const by0 = mh * 0.7, by1 = bcy - 18 * bs;
+    mainCtx.save();
+    mainCtx.globalCompositeOperation = 'lighter';
+    mainCtx.lineCap = 'round';
+    mainCtx.shadowColor = beamColor;
+    mainCtx.strokeStyle = beamColor;          // wide colored glow
+    mainCtx.globalAlpha = ba * 0.6;
+    mainCtx.shadowBlur = 30;
+    mainCtx.lineWidth = 18 * bs;
+    mainCtx.beginPath(); mainCtx.moveTo(bcx, by0); mainCtx.lineTo(bcx, by1); mainCtx.stroke();
+    mainCtx.strokeStyle = '#fff';             // white-hot core
+    mainCtx.globalAlpha = ba;
+    mainCtx.shadowBlur = 14;
+    mainCtx.lineWidth = 4 * bs;
+    mainCtx.beginPath(); mainCtx.moveTo(bcx, by0); mainCtx.lineTo(bcx, by1); mainCtx.stroke();
+    mainCtx.fillStyle = beamColor;            // impact burst at the crosshair
+    mainCtx.globalAlpha = ba * 0.55;
+    mainCtx.beginPath(); mainCtx.arc(bcx, bcy, 26 * bs, 0, Math.PI * 2); mainCtx.fill();
+    mainCtx.fillStyle = '#fff';
+    mainCtx.globalAlpha = ba;
+    mainCtx.beginPath(); mainCtx.arc(bcx, bcy, 9 * bs, 0, Math.PI * 2); mainCtx.fill();
+    mainCtx.restore();
+  }
+
   // --- Minimap ---
   renderMinimap(mw, mh);
 
@@ -4848,8 +4876,9 @@ function fireWeapon() {
         }
       }
       if (hitAny) player.shotsHit++;
+      beamTimer = 5; beamColor = wp.color; // neon beam flash, tinted to the weapon
       for (let t = 0.5; t < reach; t += 0.6) {
-        spawnParticles(player.x + rdx * t, player.y + rdy * t, 0, 1, { r: 150, g: 220, b: 255, spread: 0.01, life: 0.4, size: 2 });
+        spawnParticles(player.x + rdx * t, player.y + rdy * t, 0, 1, { r: 180, g: 235, b: 255, spread: 0.01, life: 0.4, size: 2 });
       }
       continue;
     }
@@ -4907,15 +4936,15 @@ function damageEnemy(e, dmg) {
     // Gore splat on floor
     addGoreSplat(e.x, e.y, e.type === 'boss' ? 1.5 : e.type === 'heavy' ? 1.2 : 0.6);
 
-    // Death particles - more blood spray + dissolve sparks
-    spawnParticles(e.x, e.y, 0, 20, { r: 180, g: 30, b: 20, spread: 0.07, life: 1.5, size: 4 });
+    // Death explosion - blood spray + outward gib burst + bright flash sparks
+    spawnParticles(e.x, e.y, 0, 22, { r: 190, g: 30, b: 22, spread: 0.13, life: 1.3, size: 2.8 });
+    spawnParticles(e.x, e.y, 0.1, 12, { r: 215, g: 175, b: 150, spread: 0.15, life: 1.0, size: 3 });
+    spawnParticles(e.x, e.y, 0.15, 9, { r: 255, g: 235, b: 170, spread: 0.2, life: 0.4, size: 2 });
     // Dissolve particles (float upward like ashes)
     const zone = getZone(Math.floor(e.x), Math.floor(e.y));
     const dColors = [[180,160,50],[60,180,60],[50,150,100],[200,40,30]];
     const dc = dColors[zone];
-    spawnParticles(e.x, e.y, -0.2, 12, { r: dc[0], g: dc[1], b: dc[2], spread: 0.03, life: 2.5, size: 2.5 });
-    // Bone/flesh chunks
-    spawnParticles(e.x, e.y, 0, 5, { r: 220, g: 180, b: 150, spread: 0.04, life: 0.8, size: 3 });
+    spawnParticles(e.x, e.y, -0.2, 12, { r: dc[0], g: dc[1], b: dc[2], spread: 0.04, life: 2.5, size: 2.5 });
 
     // Bloater explodes on death
     if (e.type === 'heavy') {
@@ -5097,6 +5126,7 @@ function update() {
 
   frameCount++;
   if (hitMarker > 0) hitMarker--;
+  if (beamTimer > 0) beamTimer--;
 
   // Mouse look
   player.angle += mouseDX * 0.002;
