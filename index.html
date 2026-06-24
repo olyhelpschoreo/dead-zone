@@ -729,11 +729,10 @@ propSprites.pillar = createSpriteCanvas(16, 48, (ctx) => {
 // Spawn environmental props
 const props = [];
 function spawnProps() {
-  const propDefs = [
-    { type: 'corpse', count: 8 },
-    { type: 'puddle', count: 6 },
-    { type: 'pillar', count: 4 },
-  ];
+  // Decorative billboard props removed — corpses/puddles/pillars are flat cards
+  // that hover at mid-height (a puddle can't lie flat as a vertical billboard),
+  // same flat-floating problem as the barrels and crates.
+  const propDefs = [];
   for (const def of propDefs) {
     for (let i = 0; i < def.count; i++) {
       let px, py, attempts = 0;
