@@ -2667,6 +2667,35 @@ const enemyDefs = {
              label: 'ABOMINATION' },
 };
 
+// ============================================================
+// Real CC0 monster sprites (OpenGameArt "FPS Monster Enemies", CC0).
+// Crops the front-pose frame from each sheet, fits it into the enemy's sprite
+// size (bottom-aligned), and replaces the code-drawn sprite. Async w/ fallback.
+// ============================================================
+function loadEnemySprite(type, url, sx, sy, sw, sh) {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const def = enemyDefs[type];
+      const spW = def.spriteW, spH = def.spriteH;
+      const c = document.createElement('canvas');
+      c.width = spW; c.height = spH;
+      const cx = c.getContext('2d');
+      const scale = Math.min(spW / sw, spH / sh);
+      const dw = sw * scale, dh = sh * scale;
+      cx.drawImage(img, sx, sy, sw, sh, (spW - dw) / 2, spH - dh, dw, dh);
+      const data = cx.getImageData(0, 0, spW, spH);
+      const frames = enemyMultiSprites[type];
+      if (frames) for (let i = 0; i < frames.length; i++) frames[i] = data;
+      enemySprites[type] = data;
+    } catch (e) { /* keep procedural fallback */ }
+  };
+  img.src = url;
+}
+loadEnemySprite('zombie', 'assets/sprites/zombie.png', 2, 2, 63, 93);
+loadEnemySprite('demon', 'assets/sprites/demon.png', 3, 2, 116, 108);
+loadEnemySprite('heavy', 'assets/sprites/heavy.png', 5, 2, 78, 132);
+
 function spawnEnemy(type) {
   const def = enemyDefs[type];
   let ex, ey, attempts = 0;
@@ -3548,7 +3577,7 @@ function render() {
     }
 
     // Enemy glowing eyes (only visible from front-facing angles: 0, 1, 7)
-    if (s.type === 'enemy' && s.obj.deathTimer < 0 && spriteDist < 18 && (enemyFrameIdx === 0 || enemyFrameIdx === 1 || enemyFrameIdx === 7)) {
+    if (s.type === 'enemy' && s.obj.deathTimer < 0 && spriteDist < 18 && (enemyFrameIdx === 0 || enemyFrameIdx === 1 || enemyFrameIdx === 7) && s.obj.type !== 'zombie' && s.obj.type !== 'demon' && s.obj.type !== 'heavy') {
       const e = s.obj;
       const eyeY = startY + drawH * 0.18; // eyes near top of sprite
       const eyeSpacing = spriteWidth * 0.12;
