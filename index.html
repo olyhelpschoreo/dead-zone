@@ -3378,6 +3378,25 @@ function render() {
     const fog = Math.max(0.08, Math.min(1, 1 - spriteDist / sprFogRange));
     const hitFlash = s.type === 'enemy' && s.obj.hitFlash > 0 ? 1 : 0;
 
+    // Ground contact shadow — grounds the sprite so it doesn't look pasted-on/flat
+    {
+      const cxs = Math.max(0, Math.min(W - 1, spriteScreenX));
+      if (zBuffer[cxs] > spriteDist) {
+        const shW = Math.max(4, spriteWidth * 0.5);
+        rctx.save();
+        rctx.globalAlpha = 0.45 * fog;
+        rctx.translate(spriteScreenX, endY - 1);
+        rctx.scale(1, 0.28);
+        const shg = rctx.createRadialGradient(0, 0, 0, 0, 0, shW);
+        shg.addColorStop(0, 'rgba(0,0,0,0.85)');
+        shg.addColorStop(0.6, 'rgba(0,0,0,0.5)');
+        shg.addColorStop(1, 'rgba(0,0,0,0)');
+        rctx.fillStyle = shg;
+        rctx.beginPath(); rctx.arc(0, 0, shW, 0, Math.PI * 2); rctx.fill();
+        rctx.restore();
+      }
+    }
+
     // Pickup glow effect
     if (s.type === 'pickup') {
       const glowSize = spriteH * 0.8;
@@ -3476,6 +3495,22 @@ function render() {
         spriteTempCtx.fillStyle = `rgba(255,180,80,${flashStr})`;
         spriteTempCtx.fillRect(0, 0, stW, stH);
       }
+      spriteTempCtx.globalCompositeOperation = 'source-over';
+    } else if (s.type === 'pickup' || s.type === 'prop') {
+      // Form shading so items/props have depth instead of looking flat
+      spriteTempCtx.globalCompositeOperation = 'source-atop';
+      const vg = spriteTempCtx.createLinearGradient(0, 0, 0, stH);
+      vg.addColorStop(0, 'rgba(255,255,255,0.14)');   // top highlight
+      vg.addColorStop(0.4, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.32)');          // bottom shade
+      spriteTempCtx.fillStyle = vg;
+      spriteTempCtx.fillRect(0, 0, stW, stH);
+      const eg = spriteTempCtx.createLinearGradient(0, 0, stW, 0);
+      eg.addColorStop(0, 'rgba(0,0,0,0.24)');          // edge darkening = roundness
+      eg.addColorStop(0.5, 'rgba(0,0,0,0)');
+      eg.addColorStop(1, 'rgba(0,0,0,0.24)');
+      spriteTempCtx.fillStyle = eg;
+      spriteTempCtx.fillRect(0, 0, stW, stH);
       spriteTempCtx.globalCompositeOperation = 'source-over';
     }
 
