@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>DEAD ZONE - Zombie Apocalypse</title>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v2.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;overflow:hidden;cursor:none;font-family:'Courier New',monospace;user-select:none}
@@ -67,6 +68,12 @@ canvas#main{display:block;image-rendering:pixelated}
 #death-screen h1{font-size:80px;color:#a00;text-shadow:0 0 40px #f00,0 0 80px #800;margin-bottom:20px}
 #death-stats{color:#c99;font-size:20px;text-align:center;line-height:2}
 #death-restart{color:#6b2;font-size:24px;margin-top:30px;animation:pulse 1.2s infinite}
+#revive-btn{margin-top:26px;padding:14px 32px;font-family:inherit;font-size:22px;font-weight:bold;color:#021;background:linear-gradient(#5f5,#2a2);border:2px solid #9f9;border-radius:9px;cursor:pointer;box-shadow:0 0 26px #2f2;animation:pulse 1.2s infinite}
+#revive-btn:hover{background:linear-gradient(#7f7,#3b3)}
+#revive-btn:disabled{opacity:.6;cursor:default;animation:none}
+#free-coins-btn{margin:6px 0 2px;padding:9px 20px;font-family:inherit;font-size:15px;font-weight:bold;color:#021;background:linear-gradient(#fd5,#e9a000);border:2px solid #fe8;border-radius:8px;cursor:pointer;box-shadow:0 0 16px #a80}
+#free-coins-btn:hover{filter:brightness(1.1)}
+#free-coins-btn:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -76,6 +83,7 @@ canvas#main{display:block;image-rendering:pixelated}
   <h2>HOME BASE</h2>
   <div id="coin-bank" style="color:#fc0;font-size:26px;margin:0 0 6px;letter-spacing:2px;text-shadow:0 0 14px #a80">🪙 0</div>
   <div id="home-best">BEST: 0 pts · Wave 0</div>
+  <button id="free-coins-btn">📺 WATCH AD → +25 🪙</button>
   <button id="deploy-btn">DEPLOY ▸</button>
   <div id="home-tabs">
     <button class="tab-btn" id="arsenal-tab">🔫 ARSENAL</button>
@@ -115,10 +123,56 @@ canvas#main{display:block;image-rendering:pixelated}
 <div id="death-screen">
   <h1>DEVOURED</h1>
   <div id="death-stats"></div>
+  <button id="revive-btn">📺 REVIVE — WATCH AD</button>
   <div id="death-restart">[ RETURN TO BASE ]</div>
 </div>
 
 <script>
+// ============================================================
+// CrazyGames SDK — ads + gameplay events (monetization)
+// Every call is guarded: with no SDK present (file://, GitHub Pages,
+// offline) the game runs normally; rewarded ads fall back to granting
+// the reward so the flow stays testable off-platform. Real ads only
+// serve when the game is hosted on CrazyGames.
+// ============================================================
+const CG = { env: 'local', adShowing: false };
+function cgSDK() { return (window.CrazyGames && window.CrazyGames.SDK) || null; }
+(async () => {
+  try { const s = cgSDK(); if (s && s.getEnvironment) CG.env = await s.getEnvironment(); }
+  catch (e) { /* SDK absent / off-platform */ }
+})();
+function cgMute(on) { try { if (audioCtx) { on ? audioCtx.suspend() : audioCtx.resume(); } } catch (e) {} }
+function cgGameplayStart() { try { cgSDK()?.game?.gameplayStart?.(); } catch (e) {} }
+function cgGameplayStop() { try { cgSDK()?.game?.gameplayStop?.(); } catch (e) {} }
+// Non-rewarded ad between runs. The SDK rate-limits frequency itself.
+function cgMidgameAd() {
+  const s = cgSDK();
+  if (!s || CG.env !== 'crazygames' || CG.adShowing) return;
+  try {
+    s.ad.requestAd('midgame', {
+      adStarted: () => { CG.adShowing = true; cgMute(true); },
+      adFinished: () => { CG.adShowing = false; cgMute(false); },
+      adError: () => { CG.adShowing = false; cgMute(false); },
+    });
+  } catch (e) { CG.adShowing = false; }
+}
+// Rewarded ad. reward() runs only on a completed watch (real ad on
+// CrazyGames; granted immediately off-platform so it stays testable).
+function cgRewardedAd(reward, opts) {
+  opts = opts || {};
+  const s = cgSDK();
+  if (!s || CG.env !== 'crazygames') { reward(); return; }
+  if (CG.adShowing) return;
+  try {
+    s.ad.requestAd('rewarded', {
+      adStarted: () => { CG.adShowing = true; cgMute(true); },
+      adFinished: () => { CG.adShowing = false; cgMute(false); reward(); },
+      adError: (e) => { CG.adShowing = false; cgMute(false); if (opts.onError) opts.onError(e); },
+    });
+  } catch (e) { CG.adShowing = false; if (opts.onError) opts.onError(e); }
+}
+let revivedThisRun = false;
+
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -5346,6 +5400,7 @@ function hurtPlayer(dmg, fromAngle) {
   if (player.health <= 0) {
     player.health = 0;
     gameOver = true;
+    cgGameplayStop();
     document.exitPointerLock();
     const earnedCoins = coinsForRun();
     save.coins += earnedCoins;
@@ -5361,6 +5416,10 @@ function hurtPlayer(dmg, fromAngle) {
       `Accuracy: ${player.shotsFired > 0 ? Math.floor(player.shotsHit / player.shotsFired * 100) : 0}%<br>` +
       `Total Damage: ${Math.floor(player.totalDamageDealt)}<br>` +
       `<span style="color:#fc0">Coins earned: +${earnedCoins} &nbsp;&middot;&nbsp; Bank: 🪙 ${save.coins}</span>`;
+    const rb = document.getElementById('revive-btn');
+    rb.disabled = false;
+    rb.textContent = '📺 REVIVE — WATCH AD';
+    rb.style.display = revivedThisRun ? 'none' : 'block';
   }
 }
 
@@ -5823,9 +5882,11 @@ function startRun() {
   gameOver = false;
   gameStarted = true;
   atHome = false;
+  revivedThisRun = false;
   document.getElementById('home-base').style.display = 'none';
   document.getElementById('death-screen').style.display = 'none';
   mainCanvas.requestPointerLock();
+  cgGameplayStart();
 }
 
 // Return to the Home Base (from death). The run freezes; coins are already banked.
@@ -5837,10 +5898,48 @@ function openHome() {
   updateCoinDisplays();
   document.getElementById('death-screen').style.display = 'none';
   document.getElementById('home-base').style.display = 'flex';
+  cgMidgameAd();
 }
 
 document.getElementById('deploy-btn').addEventListener('click', startRun);
 document.getElementById('death-screen').addEventListener('click', () => { if (gameOver) openHome(); });
+
+// --- Rewarded "revive" (once per run) ---
+function revive() {
+  document.getElementById('death-screen').style.display = 'none';
+  player.health = 100;
+  player.armor = Math.max(player.armor || 0, 25);
+  gameOver = false;
+  gameStarted = true;
+  revivedThisRun = true;
+  // clear point-blank threats so you don't instantly die again
+  enemies = enemies.filter(e => Math.hypot(e.x - player.x, e.y - player.y) > 3.5);
+  mainCanvas.requestPointerLock();
+  cgGameplayStart();
+}
+document.getElementById('revive-btn').addEventListener('click', (ev) => {
+  ev.stopPropagation(); // don't fall through to the death-screen → return-to-base click
+  const btn = ev.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '📺 LOADING AD…';
+  cgRewardedAd(revive, { onError: () => { btn.disabled = false; btn.textContent = '📺 REVIVE — WATCH AD'; } });
+});
+
+// --- Rewarded "free coins" in the Home Base (30s cooldown after a watch) ---
+const freeCoinsBtn = document.getElementById('free-coins-btn');
+freeCoinsBtn.addEventListener('click', () => {
+  const orig = '📺 WATCH AD → +25 🪙';
+  freeCoinsBtn.disabled = true;
+  freeCoinsBtn.textContent = '📺 LOADING AD…';
+  cgRewardedAd(
+    () => {
+      save.coins += 25; writeSave(); updateCoinDisplays();
+      freeCoinsBtn.textContent = '✓ +25 🪙 — back in 30s';
+      setTimeout(() => { freeCoinsBtn.textContent = orig; freeCoinsBtn.disabled = false; }, 30000);
+    },
+    { onError: () => { freeCoinsBtn.textContent = orig; freeCoinsBtn.disabled = false; } }
+  );
+});
 
 // --- Arsenal shop: buy weapons with coins; owned weapons spawn with you ---
 function weaponStatLine(w) {
