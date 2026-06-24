@@ -3755,11 +3755,19 @@ function render() {
   bloomCtx.filter = 'none';
   mainCtx.save();
   mainCtx.globalCompositeOperation = 'lighter';
-  mainCtx.globalAlpha = 0.42;
+  mainCtx.globalAlpha = 0.5;
   mainCtx.filter = 'blur(6px)';
   mainCtx.drawImage(bloomCanvas, -shakeX, -shakeY, W, H, 0, 0, mw, mh);
   mainCtx.filter = 'none';
   mainCtx.restore();
+
+  // --- Cinematic vignette (frames the view; drawn under the weapon + HUD) ---
+  const vig = mainCtx.createRadialGradient(mw/2, mh*0.5, mh*0.34, mw/2, mh*0.56, mh*0.98);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(0.7, 'rgba(0,0,0,0.12)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+  mainCtx.fillStyle = vig;
+  mainCtx.fillRect(0, 0, mw, mh);
 
   // --- Weapon rendering (full res) ---
   renderWeapon(mw, mh);
