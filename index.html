@@ -2180,6 +2180,36 @@ pickupSprites.armor = createSpriteCanvas(24, 24, (ctx) => {
   ctx.fillStyle = '#5af';
   ctx.fillRect(10, 8, 4, 8);
 });
+// Real CC0 item pickups (OpenGameArt "Items - armor, health, ammo" by Nmn).
+// Crops one item from the cyan-bg sheet, keys+trims it, fits to 24x24.
+function loadPickupSprite(type, sx, sy, sw, sh) {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const t = document.createElement('canvas'); t.width = sw; t.height = sh;
+      const tg = t.getContext('2d');
+      tg.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const id = tg.getImageData(0, 0, sw, sh), d = id.data;
+      let minX = sw, minY = sh, maxX = -1, maxY = -1;
+      for (let p = 0; p < sw * sh; p++) {
+        const o = p * 4;
+        if (d[o] < 90 && d[o + 1] > 160 && d[o + 2] > 160 && d[o] + 35 < d[o + 1]) d[o + 3] = 0;
+        if (d[o + 3] > 25) { const px = p % sw, py = (p / sw) | 0; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py; }
+      }
+      tg.putImageData(id, 0, 0);
+      const bw = Math.max(1, maxX - minX + 1), bh = Math.max(1, maxY - minY + 1), S = 24;
+      const c = document.createElement('canvas'); c.width = S; c.height = S;
+      const cx = c.getContext('2d');
+      const scale = Math.min(S / bw, S / bh), dw = bw * scale, dh = bh * scale;
+      cx.drawImage(t, minX, minY, bw, bh, (S - dw) / 2, (S - dh) / 2, dw, dh);
+      pickupSprites[type] = cx.getImageData(0, 0, S, S);
+    } catch (e) { /* keep code-drawn fallback */ }
+  };
+  img.src = 'assets/sprites/items.png';
+}
+loadPickupSprite('health', 250, 90, 42, 32);
+loadPickupSprite('ammo', 202, 26, 58, 30);
+loadPickupSprite('armor', 18, 18, 46, 50);
 pickupSprites.shotgun_pickup = createSpriteCanvas(32, 24, (ctx) => {
   ctx.fillStyle = '#888';
   ctx.fillRect(2, 8, 28, 6);
