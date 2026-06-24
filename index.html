@@ -135,11 +135,12 @@ canvas#main{display:block;image-rendering:pixelated}
 // the reward so the flow stays testable off-platform. Real ads only
 // serve when the game is hosted on CrazyGames.
 // ============================================================
-const CG = { env: 'local', adShowing: false };
+const CG = { env: 'local', adShowing: false, envResolved: false };
 function cgSDK() { return (window.CrazyGames && window.CrazyGames.SDK) || null; }
 (async () => {
   try { const s = cgSDK(); if (s && s.getEnvironment) CG.env = await s.getEnvironment(); }
   catch (e) { /* SDK absent / off-platform */ }
+  finally { CG.envResolved = true; }
 })();
 function cgMute(on) { try { if (audioCtx) { on ? audioCtx.suspend() : audioCtx.resume(); } } catch (e) {} }
 function cgGameplayStart() { try { cgSDK()?.game?.gameplayStart?.(); } catch (e) {} }
@@ -161,7 +162,9 @@ function cgMidgameAd() {
 function cgRewardedAd(reward, opts) {
   opts = opts || {};
   const s = cgSDK();
-  if (!s || CG.env !== 'crazygames') { reward(); return; }
+  if (!s) { reward(); return; }                                  // no SDK -> off-platform, grant directly
+  if (!CG.envResolved) { if (opts.onError) opts.onError('init'); return; } // env unknown -> don't free-grant yet
+  if (CG.env !== 'crazygames') { reward(); return; }             // dev / local / disabled -> grant for testing
   if (CG.adShowing) { if (opts.onError) opts.onError('busy'); return; } // re-enable the button
   try {
     s.ad.requestAd('rewarded', {
@@ -2814,9 +2817,9 @@ const enemyDefs = {
   zombie:  { health: 40, speed: 0.02, damage: 8, range: 1.5, fireRate: 40, scoreValue: 50,
              melee: true, sprite: 'zombie', spriteW: 96, spriteH: 128, radius: 0.35,
              label: 'WALKER' },
-  soldier: { health: 60, speed: 0.04, damage: 15, range: 1.8, fireRate: 30, scoreValue: 100,
-             melee: true, sprite: 'soldier', spriteW: 96, spriteH: 128, radius: 0.35,
-             label: 'RUNNER' },
+  soldier: { health: 60, speed: 0.03, damage: 6, range: 9, fireRate: 90, scoreValue: 100,
+             melee: false, sprite: 'soldier', spriteW: 96, spriteH: 128, radius: 0.35,
+             label: 'GUNNER' },
   heavy:   { health: 180, speed: 0.012, damage: 25, range: 2.5, fireRate: 50, scoreValue: 200,
              melee: true, sprite: 'heavy', spriteW: 112, spriteH: 128, radius: 0.5,
              label: 'BLOATER' },
@@ -5831,26 +5834,19 @@ function update() {
             const fa = flowDir(e.x, e.y);
             if (fa !== null) moveAngle = fa;
           }
-          const nx = e.x + Math.cos(moveAngle) * moveSpeed;
-          const ny = e.y + Math.sin(moveAngle) * moveSpeed;
-          if (canMove(nx, ny, e.radius)) {
+          // Try the path direction first, then progressively wider slide angles.
+          // Each candidate must clear BOTH walls and other enemies, so a body
+          // blocked only by another enemy still routes around instead of stalling.
+          for (const a of [moveAngle, moveAngle + 0.7, moveAngle - 0.7, moveAngle + 1.4, moveAngle - 1.4]) {
+            const ax = e.x + Math.cos(a) * moveSpeed;
+            const ay = e.y + Math.sin(a) * moveSpeed;
+            if (!canMove(ax, ay, e.radius)) continue;
             let blocked = false;
             for (const other of enemies) {
               if (other === e || other.deathTimer >= 0) continue;
-              if (Math.hypot(nx - other.x, ny - other.y) < e.radius + other.radius) {
-                blocked = true; break;
-              }
+              if (Math.hypot(ax - other.x, ay - other.y) < e.radius + other.radius) { blocked = true; break; }
             }
-            if (!blocked) { e.x = nx; e.y = ny; }
-          } else {
-            // Local avoidance: slide around the corner/obstacle.
-            for (const alt of [moveAngle + 0.7, moveAngle - 0.7, moveAngle + 1.4, moveAngle - 1.4]) {
-              const ax = e.x + Math.cos(alt) * moveSpeed;
-              const ay = e.y + Math.sin(alt) * moveSpeed;
-              if (canMove(ax, ay, e.radius)) {
-                e.x = ax; e.y = ay; break;
-              }
-            }
+            if (!blocked) { e.x = ax; e.y = ay; break; }
           }
         } else if (!e.melee) {
           // Strafe when close enough
@@ -5972,8 +5968,14 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyR') startReload();
 
   // Weapon switching
-  for (let n = 1; n <= 9; n++) {
-    if (e.code === 'Digit' + n && player.hasWeapon[n - 1]) { player.weaponIdx = n - 1; player.reloading = false; }
+  // Number keys select your 1st-9th OWNED weapon (you can own up to 30; the
+  // scroll wheel cycles the rest), so every owned gun past slot 9 is reachable.
+  const dm = /^Digit([1-9])$/.exec(e.code);
+  if (dm) {
+    const owned = [];
+    for (let i = 0; i < weapons.length; i++) if (player.hasWeapon[i]) owned.push(i);
+    const pick = owned[+dm[1] - 1];
+    if (pick !== undefined) { player.weaponIdx = pick; player.reloading = false; }
   }
 });
 
