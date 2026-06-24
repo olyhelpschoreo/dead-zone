@@ -122,7 +122,7 @@ canvas#main{display:block;image-rendering:pixelated}
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const RENDER_W = 640, RENDER_H = 400;
+const RENDER_W = 960, RENDER_H = 600; // higher internal resolution = much sharper world
 const TEX_SIZE = 128, TEX_MASK = 127;
 const FOV = Math.PI / 3;
 const PLANE_MULT = Math.tan(FOV / 2);
@@ -183,6 +183,11 @@ const renderCanvas = document.createElement('canvas');
 renderCanvas.width = RENDER_W;
 renderCanvas.height = RENDER_H;
 const rctx = renderCanvas.getContext('2d');
+// Bloom buffer for glow post-processing
+const bloomCanvas = document.createElement('canvas');
+bloomCanvas.width = RENDER_W;
+bloomCanvas.height = RENDER_H;
+const bloomCtx = bloomCanvas.getContext('2d');
 
 let imgData = rctx.createImageData(RENDER_W, RENDER_H);
 let pixels = imgData.data;
@@ -3742,6 +3747,19 @@ function render() {
     -shakeX, -shakeY, W, H,
     0, 0, mw, mh);
   mainCtx.filter = 'none';
+
+  // --- Bloom: isolate the bright areas, blur them, add back as glow ---
+  bloomCtx.clearRect(0, 0, W, H);
+  bloomCtx.filter = 'brightness(0.26) contrast(5)'; // hard threshold: keep only the brightest
+  bloomCtx.drawImage(renderCanvas, 0, 0);
+  bloomCtx.filter = 'none';
+  mainCtx.save();
+  mainCtx.globalCompositeOperation = 'lighter';
+  mainCtx.globalAlpha = 0.42;
+  mainCtx.filter = 'blur(6px)';
+  mainCtx.drawImage(bloomCanvas, -shakeX, -shakeY, W, H, 0, 0, mw, mh);
+  mainCtx.filter = 'none';
+  mainCtx.restore();
 
   // --- Weapon rendering (full res) ---
   renderWeapon(mw, mh);
