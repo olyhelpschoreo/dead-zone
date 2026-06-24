@@ -31,6 +31,34 @@ canvas#main{display:block;image-rendering:pixelated}
 .wpn-card.owned .wpn-buy{background:transparent;color:#6c2;border:1px solid #4a0}
 #arsenal-back{margin-top:18px;background:#111;color:#6a4;border:1px solid #2a1;font-family:inherit;font-size:15px;letter-spacing:2px;padding:10px 28px;border-radius:5px;cursor:pointer}
 #arsenal-back:hover{background:#1a2a10}
+#cases,#locker{position:fixed;top:0;left:0;width:100%;height:100%;background:#050805;z-index:101;display:none;flex-direction:column;align-items:center;padding:26px 0;cursor:default;overflow-y:auto}
+#cases h2,#locker h2{color:#6c2;font-size:26px;letter-spacing:6px;margin-bottom:4px}
+#cases-coins{color:#fc0;font-size:20px;margin-bottom:16px;letter-spacing:1px}
+#case-list{width:min(560px,92%);display:flex;flex-direction:column;gap:10px}
+.case-card{display:flex;align-items:center;justify-content:space-between;background:#0d140d;border:1px solid #243524;border-radius:8px;padding:14px 16px}
+.case-name{color:#dca;font-size:18px;letter-spacing:1px}
+.case-odds{color:#684;font-size:11px;margin-top:3px;letter-spacing:1px}
+.case-buy{background:#4a0;color:#021;border:none;font-family:inherit;font-weight:bold;font-size:15px;padding:9px 16px;border-radius:5px;cursor:pointer;min-width:96px}
+.case-buy:disabled{background:#1a2416;color:#566;cursor:default}
+#spin-wrap{position:relative;width:min(560px,92%);height:96px;margin:20px 0 6px;overflow:hidden;border:1px solid #243524;border-radius:8px;background:#08100a}
+#spin-marker{position:absolute;left:50%;top:0;width:2px;height:100%;background:#fc0;box-shadow:0 0 10px #fc0;z-index:2;transform:translateX(-1px)}
+#spin-strip{display:flex;gap:8px;padding:8px 0;height:100%;will-change:transform}
+.spin-tile{flex:0 0 112px;height:78px;border:2px solid #555;border-radius:6px;background:#0c130c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.tile-name{font-size:13px;letter-spacing:1px}
+.tile-rar{font-size:10px;color:#888;margin-top:4px;letter-spacing:1px}
+#spin-result{min-height:30px;margin:12px 0;font-size:16px;letter-spacing:1px;text-align:center;color:#cda}
+#spin-result button{background:#4a0;color:#021;border:none;font-family:inherit;font-weight:bold;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:5px;cursor:pointer;margin-left:8px}
+#cases-back,#locker-back{margin-top:14px;background:#111;color:#6a4;border:1px solid #2a1;font-family:inherit;font-size:15px;letter-spacing:2px;padding:10px 28px;border-radius:5px;cursor:pointer}
+#cases-back:hover,#locker-back:hover{background:#1a2a10}
+.locker-sub{color:#8c4;font-size:14px;letter-spacing:3px;margin:16px 0 8px}
+#weapon-skin-list,#hud-skin-list{width:min(640px,94%);display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.skin-card{flex:0 0 122px;border:2px solid #333;border-radius:6px;background:#0c130c;padding:10px 8px;text-align:center}
+.skin-card[data-equip]{cursor:pointer}
+.skin-card[data-equip]:hover{background:#13220e}
+.skin-card.locked{opacity:.45}
+.skin-card.equipped{background:#11240c}
+.skin-name{font-size:13px;letter-spacing:1px}
+.skin-rar{font-size:10px;color:#777;margin-top:4px;letter-spacing:1px}
 .controls{color:#888;font-size:14px;margin:4px 0}
 .controls span{color:#8c4;display:inline-block;width:120px;text-align:right;margin-right:10px}
 .click-start{color:#6b2;font-size:28px;margin-top:40px;animation:pulse 1.2s infinite;letter-spacing:4px}
@@ -51,7 +79,8 @@ canvas#main{display:block;image-rendering:pixelated}
   <button id="deploy-btn">DEPLOY ▸</button>
   <div id="home-tabs">
     <button class="tab-btn" id="arsenal-tab">🔫 ARSENAL</button>
-    <button class="tab-btn" disabled>📦 CASES (soon)</button>
+    <button class="tab-btn" id="cases-tab">📦 CASES</button>
+    <button class="tab-btn" id="skins-tab">🎨 SKINS</button>
   </div>
   <div class="controls"><span>W A S D</span> Move</div>
   <div class="controls"><span>MOUSE</span> Aim</div>
@@ -66,6 +95,22 @@ canvas#main{display:block;image-rendering:pixelated}
   <div id="arsenal-coins">🪙 0</div>
   <div id="arsenal-list"></div>
   <button id="arsenal-back">◂ BACK TO BASE</button>
+</div>
+<div id="cases">
+  <h2>CASES</h2>
+  <div id="cases-coins">🪙 0</div>
+  <div id="case-list"></div>
+  <div id="spin-wrap"><div id="spin-marker"></div><div id="spin-strip"></div></div>
+  <div id="spin-result"></div>
+  <button id="cases-back">◂ BACK TO BASE</button>
+</div>
+<div id="locker">
+  <h2>SKINS</h2>
+  <div class="locker-sub">WEAPON SKINS</div>
+  <div id="weapon-skin-list"></div>
+  <div class="locker-sub">HUD THEMES</div>
+  <div id="hud-skin-list"></div>
+  <button id="locker-back">◂ BACK TO BASE</button>
 </div>
 <div id="death-screen">
   <h1>DEVOURED</h1>
@@ -2372,6 +2417,67 @@ const weapons = [
 ];
 
 // ============================================================
+// SKINS & CASES  (cosmetic only — cases open with EARNED COINS, never real money)
+// ============================================================
+const RARITY = {
+  common:    { name: 'Common',    color: '#9aa' },
+  uncommon:  { name: 'Uncommon',  color: '#5c5' },
+  rare:      { name: 'Rare',      color: '#49f' },
+  epic:      { name: 'Epic',      color: '#b5f' },
+  legendary: { name: 'Legendary', color: '#fc3' },
+};
+// type 'weapon' -> CSS filter tints the gun; type 'hud' -> recolors the crosshair
+const skins = [
+  { id: 'rust',     name: 'Rust',          rarity: 'common',    type: 'weapon', filter: 'sepia(.6) hue-rotate(-20deg) saturate(1.5) brightness(.9)' },
+  { id: 'olive',    name: 'Olive Drab',    rarity: 'common',    type: 'weapon', filter: 'hue-rotate(40deg) saturate(.8) brightness(.85)' },
+  { id: 'ash',      name: 'Ash',           rarity: 'common',    type: 'weapon', filter: 'grayscale(1) brightness(1.15)' },
+  { id: 'toxic',    name: 'Toxic',         rarity: 'uncommon',  type: 'weapon', filter: 'hue-rotate(75deg) saturate(2.2) brightness(1.1)' },
+  { id: 'camo',     name: 'Forest Camo',   rarity: 'uncommon',  type: 'weapon', filter: 'hue-rotate(60deg) saturate(1.3) brightness(.8)' },
+  { id: 'hud_ice',  name: 'HUD: Ice Blue', rarity: 'uncommon',  type: 'hud',    color: '#6cf', glow: 'rgba(100,200,255,0.18)' },
+  { id: 'ice',      name: 'Ice',           rarity: 'rare',      type: 'weapon', filter: 'hue-rotate(160deg) saturate(1.8) brightness(1.2)' },
+  { id: 'ocean',    name: 'Ocean',         rarity: 'rare',      type: 'weapon', filter: 'hue-rotate(195deg) saturate(2) brightness(1.05)' },
+  { id: 'neon',     name: 'Neon',          rarity: 'rare',      type: 'weapon', filter: 'hue-rotate(285deg) saturate(3) brightness(1.2)' },
+  { id: 'hud_amber',name: 'HUD: Amber',    rarity: 'rare',      type: 'hud',    color: '#fb3', glow: 'rgba(255,180,40,0.18)' },
+  { id: 'plasma',   name: 'Plasma',        rarity: 'epic',      type: 'weapon', filter: 'hue-rotate(300deg) saturate(3) brightness(1.3) contrast(1.2)' },
+  { id: 'venom',    name: 'Venom',         rarity: 'epic',      type: 'weapon', filter: 'hue-rotate(105deg) saturate(3) brightness(1.2) contrast(1.3)' },
+  { id: 'galaxy',   name: 'Galaxy',        rarity: 'epic',      type: 'weapon', filter: 'hue-rotate(230deg) saturate(2.6) brightness(1.15) contrast(1.2)' },
+  { id: 'hud_pink', name: 'HUD: Hot Pink', rarity: 'epic',      type: 'hud',    color: '#f6c', glow: 'rgba(255,100,200,0.2)' },
+  { id: 'gold',     name: 'Gold',          rarity: 'legendary', type: 'weapon', filter: 'sepia(1) saturate(3.5) hue-rotate(-12deg) brightness(1.25)' },
+  { id: 'inferno',  name: 'Inferno',       rarity: 'legendary', type: 'weapon', filter: 'sepia(1) saturate(5) hue-rotate(-28deg) brightness(1.2) contrast(1.3)' },
+  { id: 'dragon',   name: 'Dragon',        rarity: 'legendary', type: 'weapon', filter: 'hue-rotate(-40deg) saturate(3.5) brightness(1.2) contrast(1.3)' },
+  { id: 'diamond',  name: 'Diamond',       rarity: 'legendary', type: 'weapon', filter: 'hue-rotate(170deg) saturate(.6) brightness(1.5) contrast(1.2)' },
+];
+// Weights are percentages (sum to 100). Odds are shown on each case.
+const cases = [
+  { id: 'common_case', name: 'Common Case', price: 150,
+    weights: { common: 60, uncommon: 28, rare: 10, epic: 1.8, legendary: 0.2 } },
+  { id: 'rare_case',   name: 'Rare Case',   price: 400,
+    weights: { common: 22, uncommon: 36, rare: 30, epic: 9, legendary: 3 } },
+  { id: 'elite_case',  name: 'Elite Case',  price: 900,
+    weights: { common: 0, uncommon: 22, rare: 40, epic: 26, legendary: 12 } },
+];
+let spinning = false;
+function skinById(id) { return skins.find(s => s.id === id); }
+function rollRarity(weights) {
+  let total = 0; for (const k in weights) total += weights[k];
+  let r = Math.random() * total, acc = 0;
+  for (const k in weights) { acc += weights[k]; if (r <= acc) return k; }
+  return 'common';
+}
+function rollCaseSkin(c) {
+  const pool = skins.filter(s => s.rarity === rollRarity(c.weights));
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : skins[0];
+}
+function activeWeaponSkinFilter() {
+  const s = skinById(save.equippedWeaponSkin);
+  return (s && s.type === 'weapon') ? s.filter : 'none';
+}
+function activeHudTheme() {
+  const s = skinById(save.equippedHudTheme);
+  return (s && s.type === 'hud') ? s : null;
+}
+
+// ============================================================
 // GAME STATE
 // ============================================================
 const player = {
@@ -3681,6 +3787,7 @@ function renderWeapon(W, H) {
   mainCtx.save();
   mainCtx.translate(cx, cy);
   mainCtx.scale(scale, scale);
+  mainCtx.filter = activeWeaponSkinFilter(); // weapon skin tint; reset by the matching restore()
 
   const firing = player.shootCooldown > wp.fireRate - 3;
 
@@ -3901,15 +4008,17 @@ function renderHUD(W, H) {
 
   // --- Crosshair (modern dynamic style) ---
   const cx = W/2, cy = H/2;
-  const spread = wp.renderStyle === 'shotgun' ? 14 : wp.renderStyle === 'chaingun' ? 10 : 6;
+  const crossStyle = weapons[player.weaponIdx].renderStyle;
+  const spread = crossStyle === 'shotgun' ? 14 : crossStyle === 'chaingun' ? 10 : 6;
   const cs = spread * s;
   const firing = player.shootCooldown > 0;
   const moving = player.moving;
   const moveSpread = moving ? 3 * s : 0;
   const fireExpand = firing ? 6 * s : 0;
   const totalExpand = moveSpread + fireExpand;
-  const crossColor = firing ? '#f44' : '#6f6';
-  const crossGlow = firing ? 'rgba(255,60,60,0.3)' : 'rgba(60,255,60,0.15)';
+  const hudTheme = activeHudTheme();
+  const crossColor = firing ? '#f44' : (hudTheme ? hudTheme.color : '#6f6');
+  const crossGlow = firing ? 'rgba(255,60,60,0.3)' : (hudTheme ? hudTheme.glow : 'rgba(60,255,60,0.15)');
 
   // Outer rotating ring
   mainCtx.globalAlpha = 0.15;
@@ -5383,6 +5492,132 @@ document.getElementById('arsenal-back').addEventListener('click', closeArsenal);
 document.getElementById('arsenal-list').addEventListener('click', e => {
   const b = e.target.closest('[data-buy]');
   if (b) buyWeapon(b.getAttribute('data-buy'));
+});
+
+// --- Cases: open with coins, spin, win a skin (duplicates refund coins) ---
+function renderCaseList() {
+  document.getElementById('cases-coins').textContent = '🪙 ' + save.coins;
+  document.getElementById('case-list').innerHTML = cases.map(c => {
+    const afford = save.coins >= c.price && !spinning;
+    const odds = 'Legendary ' + c.weights.legendary + '% · Epic ' + c.weights.epic + '%';
+    return '<div class="case-card"><div><div class="case-name">📦 ' + c.name + '</div>' +
+      '<div class="case-odds">' + odds + '</div></div>' +
+      '<button class="case-buy" data-open="' + c.id + '"' + (afford ? '' : ' disabled') + '>🪙 ' + c.price + '</button></div>';
+  }).join('');
+}
+function openCase(caseId) {
+  if (spinning) return;
+  const c = cases.find(x => x.id === caseId);
+  if (!c || save.coins < c.price) return;
+  spinning = true;
+  save.coins -= c.price;
+  const won = rollCaseSkin(c);
+  const WIN_INDEX = 45, TILES = 52, TILE_W = 120;
+  const strip = [];
+  for (let i = 0; i < TILES; i++) strip.push(i === WIN_INDEX ? won : skins[Math.floor(Math.random() * skins.length)]);
+  const stripEl = document.getElementById('spin-strip');
+  stripEl.innerHTML = strip.map(s => {
+    const rc = RARITY[s.rarity].color;
+    return '<div class="spin-tile" style="border-color:' + rc + '"><div class="tile-name" style="color:' + rc +
+      '">' + s.name + '</div><div class="tile-rar">' + RARITY[s.rarity].name + '</div></div>';
+  }).join('');
+  document.getElementById('spin-wrap').style.display = 'block';
+  document.getElementById('spin-result').textContent = '';
+  updateCoinDisplays();
+  renderCaseList();
+  stripEl.style.transition = 'none';
+  stripEl.style.transform = 'translateX(0)';
+  const wrapW = document.getElementById('spin-wrap').clientWidth;
+  const target = WIN_INDEX * TILE_W + TILE_W / 2 - wrapW / 2 + (Math.random() * 50 - 25);
+  requestAnimationFrame(() => {
+    stripEl.style.transition = 'transform 4.2s cubic-bezier(.12,.78,.3,1)';
+    stripEl.style.transform = 'translateX(' + (-target) + 'px)';
+  });
+  let done = false;
+  const finish = () => {
+    if (done) return; done = true;
+    spinning = false;
+    const dupe = save.ownedSkins.includes(won.id);
+    const rc = RARITY[won.rarity].color;
+    let msg;
+    if (dupe) {
+      const refund = Math.floor(c.price * 0.4);
+      save.coins += refund;
+      msg = '<span style="color:' + rc + '">' + won.name + '</span> (duplicate) — refunded 🪙 ' + refund;
+    } else {
+      save.ownedSkins.push(won.id);
+      msg = 'Unlocked <span style="color:' + rc + '">' + won.name + '</span> — ' + RARITY[won.rarity].name +
+        '! <button data-equip="' + won.id + '">EQUIP</button>';
+    }
+    writeSave();
+    updateCoinDisplays();
+    document.getElementById('cases-coins').textContent = '🪙 ' + save.coins;
+    document.getElementById('spin-result').innerHTML = msg;
+    renderCaseList();
+  };
+  stripEl.addEventListener('transitionend', finish, { once: true });
+  setTimeout(finish, 4600);
+}
+function openCases() {
+  renderCaseList();
+  document.getElementById('spin-wrap').style.display = 'none';
+  document.getElementById('spin-result').textContent = '';
+  document.getElementById('home-base').style.display = 'none';
+  document.getElementById('cases').style.display = 'flex';
+}
+function closeCases() {
+  if (spinning) return;
+  document.getElementById('cases').style.display = 'none';
+  document.getElementById('home-base').style.display = 'flex';
+}
+
+// --- Skins locker: equip owned weapon skins + HUD themes (click equipped to remove) ---
+function equipSkin(id) {
+  const s = skinById(id);
+  if (!s || !save.ownedSkins.includes(id)) return;
+  if (s.type === 'weapon') save.equippedWeaponSkin = (save.equippedWeaponSkin === id ? null : id);
+  else save.equippedHudTheme = (save.equippedHudTheme === id ? null : id);
+  writeSave();
+  renderLocker();
+}
+function renderLocker() {
+  const card = s => {
+    const owned = save.ownedSkins.includes(s.id);
+    const equipped = (s.type === 'weapon' ? save.equippedWeaponSkin : save.equippedHudTheme) === s.id;
+    const rc = RARITY[s.rarity].color;
+    return '<div class="skin-card' + (owned ? '' : ' locked') + (equipped ? ' equipped' : '') + '"' +
+      (owned ? ' data-equip="' + s.id + '"' : '') +
+      ' style="border-color:' + (equipped ? rc : (owned ? rc + '88' : '#333')) + '">' +
+      '<div class="skin-name" style="color:' + (owned ? rc : '#555') + '">' + s.name + '</div>' +
+      '<div class="skin-rar">' + (owned ? (equipped ? 'EQUIPPED' : RARITY[s.rarity].name) : '🔒 ' + RARITY[s.rarity].name) + '</div></div>';
+  };
+  document.getElementById('weapon-skin-list').innerHTML = skins.filter(s => s.type === 'weapon').map(card).join('');
+  document.getElementById('hud-skin-list').innerHTML = skins.filter(s => s.type === 'hud').map(card).join('');
+}
+function openLocker() {
+  renderLocker();
+  document.getElementById('home-base').style.display = 'none';
+  document.getElementById('locker').style.display = 'flex';
+}
+function closeLocker() {
+  document.getElementById('locker').style.display = 'none';
+  document.getElementById('home-base').style.display = 'flex';
+}
+document.getElementById('cases-tab').addEventListener('click', openCases);
+document.getElementById('cases-back').addEventListener('click', closeCases);
+document.getElementById('skins-tab').addEventListener('click', openLocker);
+document.getElementById('locker-back').addEventListener('click', closeLocker);
+document.getElementById('case-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-open]');
+  if (b) openCase(b.getAttribute('data-open'));
+});
+document.getElementById('spin-result').addEventListener('click', e => {
+  const b = e.target.closest('[data-equip]');
+  if (b) { equipSkin(b.getAttribute('data-equip')); b.textContent = 'EQUIPPED ✓'; b.disabled = true; }
+});
+document.getElementById('locker').addEventListener('click', e => {
+  const b = e.target.closest('[data-equip]');
+  if (b) equipSkin(b.getAttribute('data-equip'));
 });
 
 document.addEventListener('mousedown', e => {
