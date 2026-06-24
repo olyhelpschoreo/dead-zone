@@ -3990,8 +3990,31 @@ function render() {
 // ============================================================
 // WEAPON RENDERING
 // ============================================================
+// --- Real first-person weapon sprites (CC0). Light weapons -> pistol view,
+// heavy -> shotgun view; idle/fire frames. Falls back to code art if not loaded. ---
+const gunSprites = {};
+for (const name of ['pistol', 'shotgun']) for (const st of ['idle', 'fire']) {
+  const gi = new Image(); gi.src = `assets/sprites/gun_${name}_${st}.png`;
+  gunSprites[name + '_' + st] = gi;
+}
+function drawGunSprite(W, H, wp) {
+  const name = (wp.renderStyle === 'shotgun' || wp.renderStyle === 'rocket') ? 'shotgun' : 'pistol';
+  const firing = player.shootCooldown > wp.fireRate - 6;
+  const img = gunSprites[name + '_' + (firing ? 'fire' : 'idle')];
+  if (!img || !img.complete || !img.naturalWidth) return false;
+  const sway = player.weaponSway * 40 * (W / 800);
+  const bobY = Math.abs(Math.cos(player.bobPhase)) * 8 * (H / 600);
+  const dw = W * 0.9, dh = dw * (180 / 320);
+  mainCtx.save();
+  mainCtx.filter = activeWeaponSkinFilter();
+  mainCtx.drawImage(img, W * 0.18 + sway, H - dh + bobY, dw, dh);
+  mainCtx.restore();
+  return true;
+}
+
 function renderWeapon(W, H) {
   const wp = weapons[player.weaponIdx];
+  if (drawGunSprite(W, H, wp)) return; // real FP weapon sprite
   const bobX = Math.sin(player.bobPhase) * 12 * (W / 800);
   const bobY = Math.abs(Math.cos(player.bobPhase)) * 10 * (H / 600);
   const sway = player.weaponSway * 50 * (W / 800);
