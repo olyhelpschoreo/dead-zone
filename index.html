@@ -162,7 +162,7 @@ function cgRewardedAd(reward, opts) {
   opts = opts || {};
   const s = cgSDK();
   if (!s || CG.env !== 'crazygames') { reward(); return; }
-  if (CG.adShowing) return;
+  if (CG.adShowing) { if (opts.onError) opts.onError('busy'); return; } // re-enable the button
   try {
     s.ad.requestAd('rewarded', {
       adStarted: () => { CG.adShowing = true; cgMute(true); },
@@ -2744,10 +2744,21 @@ const DEFAULT_SAVE = {
   equippedHudTheme: null,   // HUD color theme id
 };
 let save = (function loadSave() {
+  const s = Object.assign({}, DEFAULT_SAVE);
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    return raw ? Object.assign({}, DEFAULT_SAVE, JSON.parse(raw)) : Object.assign({}, DEFAULT_SAVE);
-  } catch (e) { return Object.assign({}, DEFAULT_SAVE); }
+    const parsed = raw && JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') Object.assign(s, parsed);
+  } catch (e) { /* corrupt save — fall back to defaults */ }
+  // Sanitise types so a tampered / old-schema save can't crash Deploy or
+  // corrupt the coin math (e.g. ownedWeapons=null, coins as a string).
+  s.coins = Number.isFinite(s.coins) ? Math.max(0, Math.floor(s.coins)) : 0;
+  s.bestScore = Number.isFinite(s.bestScore) ? s.bestScore : 0;
+  s.bestWave = Number.isFinite(s.bestWave) ? s.bestWave : 0;
+  if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ['pistol'];
+  if (!s.ownedWeapons.includes('pistol')) s.ownedWeapons.push('pistol');
+  if (!Array.isArray(s.ownedSkins)) s.ownedSkins = [];
+  return s;
 })();
 function writeSave() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ }
@@ -5461,6 +5472,7 @@ function spawnParticles(x, y, z, count, opts) {
 // PLAYER DAMAGE
 // ============================================================
 function hurtPlayer(dmg, fromAngle) {
+  if (gameOver) return; // already dead this tick — don't re-run the death/coin-award block
   // Armor absorbs 60% of damage
   let actualDmg = dmg;
   if (player.armor > 0) {
@@ -5954,6 +5966,15 @@ document.addEventListener('keydown', e => {
 
 document.addEventListener('keyup', e => keys[e.code] = false);
 
+// When pointer lock is lost (Esc, alt-tab, focus change) clear all held input so
+// the player doesn't keep walking/auto-firing on a stuck key, and reset look.
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== mainCanvas) {
+    for (const k in keys) keys[k] = false;
+    mouseDown = false; mouseDX = 0; mouseDY = 0;
+  }
+});
+
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement === mainCanvas) {
     mouseDX += e.movementX;
@@ -5995,7 +6016,7 @@ function startRun() {
   revivedThisRun = false;
   document.getElementById('home-base').style.display = 'none';
   document.getElementById('death-screen').style.display = 'none';
-  mainCanvas.requestPointerLock();
+  mainCanvas.requestPointerLock()?.catch(() => {});
   cgGameplayStart();
 }
 
@@ -6024,7 +6045,7 @@ function revive() {
   revivedThisRun = true;
   // clear point-blank threats so you don't instantly die again
   enemies = enemies.filter(e => Math.hypot(e.x - player.x, e.y - player.y) > 3.5);
-  mainCanvas.requestPointerLock();
+  mainCanvas.requestPointerLock()?.catch(() => {});
   cgGameplayStart();
 }
 document.getElementById('revive-btn').addEventListener('click', (ev) => {
@@ -6113,6 +6134,7 @@ function openCase(caseId) {
   if (!c || save.coins < c.price) return;
   spinning = true;
   save.coins -= c.price;
+  writeSave(); // persist the spend now so a mid-spin reload can't refund it
   const won = rollCaseSkin(c);
   const WIN_INDEX = 45, TILES = 52, TILE_W = 120;
   const strip = [];
@@ -6226,7 +6248,7 @@ document.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   if (atHome || gameOver) return;       // Home Base / death screen have their own buttons
   if (document.pointerLockElement !== mainCanvas) {
-    mainCanvas.requestPointerLock();
+    mainCanvas.requestPointerLock()?.catch(() => {});
     return;
   }
   mouseDown = true;
