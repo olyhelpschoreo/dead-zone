@@ -1689,11 +1689,11 @@ enemyFrontDrawFns.zombie = (ctx, w, h) => {
   ctx.beginPath(); ctx.ellipse(56, 20, 5, 4, 0, 0, Math.PI*2); ctx.fill();
   // Glowing eyes
   g = ctx.createRadialGradient(40, 20, 0, 40, 20, 4);
-  g.addColorStop(0, '#ffee44'); g.addColorStop(0.6, '#aaaa22'); g.addColorStop(1, '#665500');
+  g.addColorStop(0, '#ff7040'); g.addColorStop(0.5, '#dd2211'); g.addColorStop(1, '#550000');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.ellipse(40, 20, 3, 2.5, 0, 0, Math.PI*2); ctx.fill();
   g = ctx.createRadialGradient(56, 20, 0, 56, 20, 4);
-  g.addColorStop(0, '#ffee44'); g.addColorStop(0.6, '#aaaa22'); g.addColorStop(1, '#665500');
+  g.addColorStop(0, '#ff7040'); g.addColorStop(0.5, '#dd2211'); g.addColorStop(1, '#550000');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.ellipse(56, 20, 3, 2.5, 0, 0, Math.PI*2); ctx.fill();
   // Eye specular
@@ -1720,6 +1720,25 @@ enemyFrontDrawFns.zombie = (ctx, w, h) => {
   ctx.beginPath(); ctx.arc(36,12,4,0,Math.PI*2); ctx.fill();
   ctx.fillStyle = 'rgba(50,60,30,0.3)';
   ctx.beginPath(); ctx.arc(60,10,3,0,Math.PI*2); ctx.fill();
+  // --- scarier pass: gaunt hollows, red eye-glow, extra gore ---
+  ctx.fillStyle = 'rgba(20,28,12,0.55)';                          // sunken cheeks
+  ctx.beginPath(); ctx.ellipse(38, 26, 4, 6, 0.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(58, 26, 4, 6, -0.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(8,12,4,0.5)'; ctx.fillRect(34, 14, 28, 3); // hollow brow
+  ctx.save();                                                      // red glow around eyes
+  ctx.globalCompositeOperation = 'lighter';
+  for (const ex of [40, 56]) {
+    const eg = ctx.createRadialGradient(ex, 20, 0, ex, 20, 7);
+    eg.addColorStop(0, 'rgba(255,60,20,0.6)'); eg.addColorStop(1, 'rgba(255,60,20,0)');
+    ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(ex, 20, 7, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = '#5a1010';                                       // more blood from the mouth
+  ctx.fillRect(40,34,3,8); ctx.fillRect(53,34,2,9); ctx.fillRect(47,35,2,6);
+  ctx.fillStyle = 'rgba(90,16,16,0.5)'; ctx.fillRect(40,40,16,3);
+  ctx.fillStyle = 'rgba(70,80,30,0.35)';                           // sickly rot spots
+  ctx.beginPath(); ctx.arc(44,8,3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(52,23,2.5,0,Math.PI*2); ctx.fill();
 };
 
 // Runner zombie (fast, crouched, feral)
