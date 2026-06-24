@@ -5144,6 +5144,57 @@ function canMove(x, y, radius = 0.2) {
 }
 
 // ============================================================
+// ENEMY PATHFINDING — BFS flow field from the player
+// ============================================================
+// One breadth-first search from the player's cell labels every walkable cell
+// with its step-distance to the player. Enemies that can't see the player walk
+// "downhill" on that field, so they route AROUND walls and crate blocks instead
+// of jamming into them. Recomputed only when the player changes cell (cheap).
+const flowField = new Int16Array(MAP_W * MAP_H).fill(-1);
+const flowQueue = new Int32Array(MAP_W * MAP_H);
+let flowReady = false, flowPX = -999, flowPY = -999;
+function computeFlowField() {
+  flowField.fill(-1);
+  const px = Math.floor(player.x), py = Math.floor(player.y);
+  if (px < 0 || px >= MAP_W || py < 0 || py >= MAP_H || getMap(px, py) !== 0) { flowReady = false; return; }
+  let head = 0, tail = 0;
+  const start = py * MAP_W + px;
+  flowField[start] = 0;
+  flowQueue[tail++] = start;
+  while (head < tail) {
+    const idx = flowQueue[head++];
+    const cx = idx % MAP_W, cy = (idx / MAP_W) | 0;
+    const d = flowField[idx] + 1;
+    if (cx + 1 < MAP_W) { const n = idx + 1;      if (flowField[n] === -1 && getMap(cx + 1, cy) === 0) { flowField[n] = d; flowQueue[tail++] = n; } }
+    if (cx - 1 >= 0)    { const n = idx - 1;      if (flowField[n] === -1 && getMap(cx - 1, cy) === 0) { flowField[n] = d; flowQueue[tail++] = n; } }
+    if (cy + 1 < MAP_H) { const n = idx + MAP_W;  if (flowField[n] === -1 && getMap(cx, cy + 1) === 0) { flowField[n] = d; flowQueue[tail++] = n; } }
+    if (cy - 1 >= 0)    { const n = idx - MAP_W;  if (flowField[n] === -1 && getMap(cx, cy - 1) === 0) { flowField[n] = d; flowQueue[tail++] = n; } }
+  }
+  flowReady = true;
+}
+// Angle that steers an enemy one cell closer to the player around walls, or
+// null if there's no route / it's already in the player's cell.
+function flowDir(ex, ey) {
+  if (!flowReady) return null;
+  const cx = Math.floor(ex), cy = Math.floor(ey);
+  if (cx < 0 || cx >= MAP_W || cy < 0 || cy >= MAP_H) return null;
+  const here = flowField[cy * MAP_W + cx];
+  if (here <= 0) return null; // on a wall, unreachable, or already at the player's cell
+  let best = here, bx = cx, by = cy;
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) continue;
+      if (dx !== 0 && dy !== 0 && (getMap(nx, cy) !== 0 || getMap(cx, ny) !== 0)) continue; // no corner cutting
+      const v = flowField[ny * MAP_W + nx];
+      if (v >= 0 && v < best) { best = v; bx = nx; by = ny; }
+    }
+  if (bx === cx && by === cy) return null;
+  return Math.atan2((by + 0.5) - ey, (bx + 0.5) - ex);
+}
+
+// ============================================================
 // SHOOTING
 // ============================================================
 function fireWeapon() {
@@ -5709,6 +5760,14 @@ function update() {
     return p.life > 0;
   });
 
+  // Refresh enemy pathfinding when the player moves to a new cell (cheap BFS).
+  if (enemies.length) {
+    const pcx = Math.floor(player.x), pcy = Math.floor(player.y);
+    if (!flowReady || pcx !== flowPX || pcy !== flowPY || frameCount % 30 === 0) {
+      computeFlowField(); flowPX = pcx; flowPY = pcy;
+    }
+  }
+
   // --- Enemy update ---
   for (const e of enemies) {
     if (e.hitFlash > 0) e.hitFlash--;
@@ -5740,8 +5799,15 @@ function update() {
         const moveSpeed = e.speed * (e.slowTimer > 0 ? 0.35 : 1);
 
         if (e.melee || dist > 4) {
-          const nx = e.x + Math.cos(e.angle) * moveSpeed;
-          const ny = e.y + Math.sin(e.angle) * moveSpeed;
+          // Chase straight when the player is visible; otherwise follow the
+          // pathfinding flow field to route around walls and crate blocks.
+          let moveAngle = e.angle;
+          if (!hasLineOfSight(e.x, e.y, player.x, player.y)) {
+            const fa = flowDir(e.x, e.y);
+            if (fa !== null) moveAngle = fa;
+          }
+          const nx = e.x + Math.cos(moveAngle) * moveSpeed;
+          const ny = e.y + Math.sin(moveAngle) * moveSpeed;
           if (canMove(nx, ny, e.radius)) {
             let blocked = false;
             for (const other of enemies) {
@@ -5752,8 +5818,8 @@ function update() {
             }
             if (!blocked) { e.x = nx; e.y = ny; }
           } else {
-            // Try to go around obstacles
-            for (const alt of [e.angle + 0.7, e.angle - 0.7]) {
+            // Local avoidance: slide around the corner/obstacle.
+            for (const alt of [moveAngle + 0.7, moveAngle - 0.7, moveAngle + 1.4, moveAngle - 1.4]) {
               const ax = e.x + Math.cos(alt) * moveSpeed;
               const ay = e.y + Math.sin(alt) * moveSpeed;
               if (canMove(ax, ay, e.radius)) {
