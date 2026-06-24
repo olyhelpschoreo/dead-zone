@@ -2672,18 +2672,34 @@ const enemyDefs = {
 // Crops the front-pose frame from each sheet, fits it into the enemy's sprite
 // size (bottom-aligned), and replaces the code-drawn sprite. Async w/ fallback.
 // ============================================================
-function loadEnemySprite(type, url, sx, sy, sw, sh) {
+function loadEnemySprite(type, url, sx, sy, sw, sh, cyanKey) {
   const img = new Image();
   img.onload = () => {
     try {
       const def = enemyDefs[type];
       const spW = def.spriteW, spH = def.spriteH;
+      let srcImg = img, rx = sx, ry = sy, rw = sw, rh = sh;
+      if (cyanKey) {
+        // Key out the cyan background, then auto-trim to the monster's bounds
+        const t = document.createElement('canvas'); t.width = sw; t.height = sh;
+        const tg = t.getContext('2d');
+        tg.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        const id = tg.getImageData(0, 0, sw, sh), d = id.data;
+        let minX = sw, minY = sh, maxX = -1, maxY = -1;
+        for (let p = 0; p < sw * sh; p++) {
+          const o = p * 4;
+          if (d[o] < 90 && d[o + 1] > 160 && d[o + 2] > 160 && d[o] + 35 < d[o + 1]) d[o + 3] = 0;
+          if (d[o + 3] > 25) { const px = p % sw, py = (p / sw) | 0; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py; }
+        }
+        tg.putImageData(id, 0, 0);
+        srcImg = t; rx = minX; ry = minY; rw = Math.max(1, maxX - minX + 1); rh = Math.max(1, maxY - minY + 1);
+      }
       const c = document.createElement('canvas');
       c.width = spW; c.height = spH;
       const cx = c.getContext('2d');
-      const scale = Math.min(spW / sw, spH / sh);
-      const dw = sw * scale, dh = sh * scale;
-      cx.drawImage(img, sx, sy, sw, sh, (spW - dw) / 2, spH - dh, dw, dh);
+      const scale = Math.min(spW / rw, spH / rh);
+      const dw = rw * scale, dh = rh * scale;
+      cx.drawImage(srcImg, rx, ry, rw, rh, (spW - dw) / 2, spH - dh, dw, dh);
       const data = cx.getImageData(0, 0, spW, spH);
       const frames = enemyMultiSprites[type];
       if (frames) for (let i = 0; i < frames.length; i++) frames[i] = data;
@@ -2695,6 +2711,7 @@ function loadEnemySprite(type, url, sx, sy, sw, sh) {
 loadEnemySprite('zombie', 'assets/sprites/zombie.png', 2, 2, 63, 93);
 loadEnemySprite('demon', 'assets/sprites/demon.png', 3, 2, 116, 108);
 loadEnemySprite('heavy', 'assets/sprites/heavy.png', 5, 2, 78, 132);
+loadEnemySprite('boss', 'assets/sprites/boss.png', 2, 2, 106, 78, true); // red beast, cyan bg
 
 function spawnEnemy(type) {
   const def = enemyDefs[type];
