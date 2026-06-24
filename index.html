@@ -567,6 +567,31 @@ const ceilTex4 = genTexture((x, y) => { // Organic - membrane, pulsing
 const zoneFloors = [floorTex, floorTex2, floorTex3, floorTex4];
 const zoneCeilings = [ceilTex, ceilTex2, ceilTex3, ceilTex4];
 
+// ============================================================
+// Real photo textures (CC0 from ambientCG.com) loaded over the procedural ones.
+// Loads async; falls back to procedural if blocked (e.g. file:// canvas readback).
+// ============================================================
+function loadTextureInto(targetArray, url) {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = TEX_SIZE; c.height = TEX_SIZE;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, TEX_SIZE, TEX_SIZE);
+      targetArray.set(cx.getImageData(0, 0, TEX_SIZE, TEX_SIZE).data);
+    } catch (e) { /* keep procedural fallback */ }
+  };
+  img.src = url;
+}
+loadTextureInto(textures[1], 'assets/tex/concrete.jpg');
+loadTextureInto(textures[2], 'assets/tex/brick.jpg');
+loadTextureInto(textures[3], 'assets/tex/metal.jpg');
+loadTextureInto(textures[4], 'assets/tex/concrete.jpg');
+loadTextureInto(textures[5], 'assets/tex/metal.jpg');
+loadTextureInto(textures[6], 'assets/tex/brick.jpg');
+loadTextureInto(floorTex, 'assets/tex/tiles.jpg');
+
 // === ENVIRONMENTAL PROPS ===
 const propSprites = {};
 propSprites.barrel = createSpriteCanvas(20, 28, (ctx) => {
