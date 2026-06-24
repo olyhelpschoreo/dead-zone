@@ -3296,6 +3296,10 @@ function render() {
     const medFlicker = Math.sin(frameCount * 0.15) > 0.92 ? 0.3 : 0;
     const animTime1 = frameCount * 0.06, animTime2 = frameCount * 0.04, animTime3 = frameCount * 0.03;
 
+    // Ceiling deepens toward directly overhead for a moodier, less flat background.
+    let ceilDarkI = 256;
+    if (isCeiling) ceilDarkI = (Math.max(0.5, 1 - ((horizon - y) / horizon) * 0.55) * 256) | 0;
+
     for (let x = 0; x < W; x++) {
       // Determine zone for this pixel (check every 8 pixels for perf)
       if ((x & 7) === 0 || prevZone < 0) {
@@ -3327,6 +3331,7 @@ function render() {
       let r = (curTex[ti] * fogI + curFogR * invFogI) >> 8;
       let g = (curTex[ti + 1] * fogI + curFogG * invFogI) >> 8;
       let b = (curTex[ti + 2] * fogI + curFogB * invFogI) >> 8;
+      if (isCeiling) { r = (r * ceilDarkI) >> 8; g = (g * ceilDarkI) >> 8; b = (b * ceilDarkI) >> 8; }
 
       // Sewer wet floor specular (every 4th pixel, simplified)
       if (prevZone === 2 && isFloor && (x & 3) === 0 && rowDist < 8) {
@@ -3396,15 +3401,19 @@ function render() {
       if (!tex) continue;
 
       const texX = Math.floor(hit.wallX * TEX_SIZE) & TEX_MASK;
-      const shade = hit.side === 1 ? 0.7 : 1.0;
+      const shade = hit.side === 1 ? 0.6 : 1.0; // stronger N-S vs E-W contrast = crisper, more 3D corners
 
       // Zone-based fog for walls
       const wallWorldX = player.x + hit.dist * rayDirX;
       const wallWorldY = player.y + hit.dist * rayDirY;
-      const wallZone = getZone(Math.floor(wallWorldX), Math.floor(wallWorldY));
+      const cellX = Math.floor(wallWorldX), cellY = Math.floor(wallWorldY);
+      const wallZone = getZone(cellX, cellY);
       const wZf = zoneFog[wallZone];
       const fog = Math.max(0, Math.min(1, 1 - perpDist / wZf.range));
-      const light = Math.min(1, shade * fog + 0.1); // +ambient floor so shadows aren't pure black
+      // Per-cell grime/wear variation (darken only) breaks the obvious texture
+      // tiling so a wall of one texture doesn't read as a single repeated stamp.
+      const cellVar = 0.66 + hashNoise(cellX * 2.3, cellY * 2.3) * 0.34;
+      const light = Math.min(1, shade * cellVar * fog + 0.09); // +ambient so shadows aren't pure black
       const lightI = (light * 256) | 0;
       const invLightI = 256 - lightI;
       const wFogR = wZf.r, wFogG = wZf.g, wFogB = wZf.b;
@@ -3432,6 +3441,14 @@ function render() {
       }
       const wlR = wallLightR | 0, wlG = wallLightG | 0, wlB = wallLightB | 0;
 
+      // Ambient-occlusion contact shadow at the wall base (only when the base is
+      // on screen) so walls feel grounded instead of pasted onto the floor.
+      const wallBottom = halfH + (wallH >> 1) + pitchOffset + bobOffset;
+      const aoOn = wallBottom <= H - 1 && wallH > 16;
+      const aoBand = aoOn ? Math.max(2, (wallH * 0.16) | 0) : 1;
+      const aoStart = wallBottom - aoBand;
+      const aoStep = 150 / aoBand;
+
       for (let y = drawStart; y <= drawEnd; y++) {
         const texY = Math.floor(texPos) & TEX_MASK;
         texPos += step;
@@ -3439,6 +3456,10 @@ function render() {
         let r = (tex[ti] * lightI + wFogR * invLightI) >> 8;
         let g = (tex[ti + 1] * lightI + wFogG * invLightI) >> 8;
         let b = (tex[ti + 2] * lightI + wFogB * invLightI) >> 8;
+        if (aoOn && y > aoStart) {
+          const m = 256 - (((y - aoStart) * aoStep) | 0);
+          r = (r * m) >> 8; g = (g * m) >> 8; b = (b * m) >> 8;
+        }
         if (flashAddR > 0) {
           r = Math.min(255, r + flashAddR);
           g = Math.min(255, g + flashAddG);
