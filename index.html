@@ -990,6 +990,22 @@ const spriteTemp = document.createElement('canvas');
 spriteTemp.width = 128; spriteTemp.height = 128;
 const spriteTempCtx = spriteTemp.getContext('2d');
 
+// Cache one backing canvas per sprite ImageData. The billboard loop draws every
+// visible sprite each frame; without this it allocated a canvas + putImageData
+// per sprite per frame (heavy GC churn / frame hitching during big waves).
+// Keyed weakly by the ImageData; size matches the old per-frame canvas (spW x spH).
+const spriteSrcCache = new WeakMap();
+function spriteSrcCanvas(spriteData, spW, spH) {
+  let c = spriteSrcCache.get(spriteData);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = spW; c.height = spH;
+    c.getContext('2d').putImageData(spriteData, 0, 0);
+    spriteSrcCache.set(spriteData, c);
+  }
+  return c;
+}
+
 // ============================================================
 // SPRITE GENERATION (pre-rendered enemy sprites)
 // ============================================================
@@ -3667,11 +3683,8 @@ function render() {
     const stW = spriteTemp.width, stH = spriteTemp.height;
     spriteTempCtx.clearRect(0, 0, stW, stH);
 
-    // Put original sprite data scaled
-    const srcCanvas = document.createElement('canvas');
-    srcCanvas.width = spW; srcCanvas.height = spH;
-    const srcCtx = srcCanvas.getContext('2d');
-    srcCtx.putImageData(spriteData, 0, 0);
+    // Put original sprite data scaled (cached backing canvas — no per-frame alloc)
+    const srcCanvas = spriteSrcCanvas(spriteData, spW, spH);
 
     // Apply fog and flash tint by adjusting globalAlpha + colored overlay
     spriteTempCtx.globalAlpha = fog * alpha;
