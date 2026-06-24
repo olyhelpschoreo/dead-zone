@@ -490,10 +490,10 @@ function getZone(x, y) {
 }
 // Zone fog colors and ranges
 const zoneFog = [
-  { r: 8, g: 12, b: 6, range: 28 },    // 0: industrial - green-brown
-  { r: 6, g: 8, b: 18, range: 26 },     // 1: medical - cold blue
-  { r: 10, g: 14, b: 8, range: 22 },    // 2: sewer - murky green (shorter range)
-  { r: 18, g: 6, b: 4, range: 24 },     // 3: organic - reddish hell
+  { r: 46, g: 56, b: 50, range: 36 },   // 0: industrial - cool grey-green
+  { r: 36, g: 50, b: 72, range: 36 },   // 1: medical - cold blue
+  { r: 40, g: 56, b: 42, range: 32 },   // 2: sewer - green
+  { r: 78, g: 46, b: 44, range: 32 },   // 3: organic - warm red (much less crushing)
 ];
 
 // Alternate floor textures per zone
@@ -3112,7 +3112,7 @@ function render() {
       const wallZone = getZone(Math.floor(wallWorldX), Math.floor(wallWorldY));
       const wZf = zoneFog[wallZone];
       const fog = Math.max(0, Math.min(1, 1 - perpDist / wZf.range));
-      const light = shade * fog;
+      const light = Math.min(1, shade * fog + 0.1); // +ambient floor so shadows aren't pure black
       const lightI = (light * 256) | 0;
       const invLightI = 256 - lightI;
       const wFogR = wZf.r, wFogG = wZf.g, wFogB = wZf.b;
@@ -3714,11 +3714,13 @@ function render() {
     rctx.globalAlpha = 1;
   }
 
-  // --- Draw to main canvas ---
+  // --- Draw to main canvas (with a "clean & punchy" color grade) ---
   const mw = mainCanvas.width, mh = mainCanvas.height;
+  mainCtx.filter = 'brightness(1.14) contrast(1.12) saturate(1.34)';
   mainCtx.drawImage(renderCanvas,
     -shakeX, -shakeY, W, H,
     0, 0, mw, mh);
+  mainCtx.filter = 'none';
 
   // --- Weapon rendering (full res) ---
   renderWeapon(mw, mh);
