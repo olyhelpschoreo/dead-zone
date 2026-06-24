@@ -486,6 +486,36 @@ textures[6] = genTexture((x, y) => {
   return [v * 0.7 * ns, v * 0.68 * ns, v * 0.62 * ns];
 });
 
+// 7: Wooden crate barricade (2x2 stack of planked crates w/ frame, X-brace and
+// steel bolts) — rendered on solid full-height cover blocks placed in the world.
+textures[7] = genTexture((x, y) => {
+  const CELL = 64;
+  const cx = x % CELL, cy = y % CELL;        // position within one crate cell
+  // planked wood base (grain runs horizontally; thin seams every 16px)
+  const grain = fbm(x * 0.05, y * 0.2, 4);
+  const tone = 0.66 + grain * 0.62;
+  let r = 152 * tone, g = 102 * tone, b = 54 * tone;
+  const plankSeam = (cy % 16 < 1.3) ? 0.5 : 1;
+  const ns = normalShade(x, y * 0.45, 0.1, 1.9);
+  r *= ns * plankSeam; g *= ns * plankSeam; b *= ns * plankSeam;
+  // frame border + diagonal X-brace (darker structural wood)
+  const bd = 7;
+  const onBorder = cx < bd || cx > CELL - 1 - bd || cy < bd || cy > CELL - 1 - bd;
+  const onBrace = Math.abs(cy - cx) < 6 || Math.abs(cy - (CELL - 1 - cx)) < 6;
+  if (onBorder || onBrace) {
+    const fg = fbm(x * 0.06, y * 0.06, 3);
+    const fns = normalShade(x, y, 0.13, 2.3);
+    r = 98 * (0.66 + fg * 0.5) * fns; g = 62 * (0.66 + fg * 0.5) * fns; b = 30 * (0.66 + fg * 0.5) * fns;
+  }
+  // steel bolts at the crate corners
+  const bolts = [[bd, bd], [CELL - 1 - bd, bd], [bd, CELL - 1 - bd], [CELL - 1 - bd, CELL - 1 - bd]];
+  for (const [bxp, byp] of bolts) {
+    const dd = Math.hypot(cx - bxp, cy - byp);
+    if (dd < 3.5) { const m = dd < 1.8 ? 1 : 0.62; r = 110 * m + 46; g = 114 * m + 46; b = 120 * m + 46; }
+  }
+  return [r, g, b];
+});
+
 // Floor texture (cracked tile with blood, wet patches) - 128x128 HD
 const floorTex = genTexture((x, y) => {
   const ns = normalShade(x, y, 0.06, 2);
@@ -718,6 +748,31 @@ function spawnProps() {
         });
       }
     }
+  }
+}
+
+// Place solid wooden crate barricades (cell value 7) as cover. Each is a lone
+// 1x1 full-height block in open space (its cell + all 4 neighbours are clear) so
+// it can never seal a corridor or trap the player. Skips the lava/hell zone and
+// the spawn. Written into mapData once at world init (persists across runs).
+function placeBarricades() {
+  let placed = 0, attempts = 0;
+  while (placed < 12 && attempts < 800) {
+    attempts++;
+    const x = 2 + Math.floor(Math.random() * (MAP_W - 4));
+    const y = 2 + Math.floor(Math.random() * (MAP_H - 4));
+    if (getZone(x, y) === 3) continue;                          // no wood on lava
+    if (Math.abs(x - 16) < 3 && Math.abs(y - 16) < 3) continue; // keep spawn clear
+    if (getMap(x, y) !== 0) continue;
+    if (getMap(x + 1, y) !== 0 || getMap(x - 1, y) !== 0 ||
+        getMap(x, y + 1) !== 0 || getMap(x, y - 1) !== 0) continue; // open on all sides
+    let near = false;
+    for (let dy = -1; dy <= 1 && !near; dy++)
+      for (let dx = -1; dx <= 1; dx++)
+        if (getMap(x + dx, y + dy) === 7) { near = true; break; }
+    if (near) continue;                                          // keep blocks scattered
+    mapData[y * MAP_W + x] = 7;
+    placed++;
   }
 }
 
@@ -4683,7 +4738,7 @@ function renderMinimap(W, H) {
     for (let x = 0; x < MAP_W; x++) {
       const t = getMap(x, y);
       if (t > 0) {
-        const colors = ['','#6a6','#a66','#66a','#a84','#4a6','#666'];
+        const colors = ['','#6a6','#a66','#66a','#a84','#4a6','#666','#a73'];
         mainCtx.fillStyle = colors[t] || '#6a6';
         mainCtx.globalAlpha = 0.7;
         mainCtx.fillRect(mx + x * cellSize, my + y * cellSize, cellSize + 0.5, cellSize + 0.5);
@@ -5847,6 +5902,7 @@ function startRun() {
     initAudio();
     startAmbience();
     addTorchLights();
+    placeBarricades();
     spawnProps();
     generateWallDecals();
     initZoneParticles();
