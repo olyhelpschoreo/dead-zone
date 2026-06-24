@@ -2708,9 +2708,34 @@ function loadEnemySprite(type, url, sx, sy, sw, sh, cyanKey) {
   };
   img.src = url;
 }
-loadEnemySprite('zombie', 'assets/sprites/zombie.png', 2, 2, 63, 93);
-loadEnemySprite('demon', 'assets/sprites/demon.png', 3, 2, 116, 108);
-loadEnemySprite('heavy', 'assets/sprites/heavy.png', 5, 2, 78, 132);
+// Enemy types that use real animated sprites (walk cycle) instead of code art
+const ANIM_TYPES = { zombie: 1, demon: 1, heavy: 1 };
+// Load a walk cycle: frameRects = [[sx,sy,sw,sh], ...] -> enemyMultiSprites[type]
+function loadEnemyAnim(type, url, frameRects) {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const def = enemyDefs[type];
+      const spW = def.spriteW, spH = def.spriteH;
+      const out = [];
+      for (const [sx, sy, sw, sh] of frameRects) {
+        const c = document.createElement('canvas');
+        c.width = spW; c.height = spH;
+        const cx = c.getContext('2d');
+        const scale = Math.min(spW / sw, spH / sh);
+        const dw = sw * scale, dh = sh * scale;
+        cx.drawImage(img, sx, sy, sw, sh, (spW - dw) / 2, spH - dh, dw, dh);
+        out.push(cx.getImageData(0, 0, spW, spH));
+      }
+      enemyMultiSprites[type] = out;
+      enemySprites[type] = out[0];
+    } catch (e) { /* keep procedural fallback */ }
+  };
+  img.src = url;
+}
+loadEnemyAnim('zombie', 'assets/sprites/zombie.png', [[1,2,64,92],[68,2,64,92],[135,2,64,92],[202,2,64,92]]);
+loadEnemyAnim('demon', 'assets/sprites/demon.png', [[2,2,116,108],[123,2,116,108],[244,2,116,108],[365,2,116,108]]);
+loadEnemyAnim('heavy', 'assets/sprites/heavy.png', [[4,2,80,132],[90,2,80,132],[176,2,80,132],[262,2,80,132]]);
 loadEnemySprite('boss', 'assets/sprites/boss.png', 2, 2, 106, 78, true); // red beast, cyan bg
 loadEnemySprite('soldier', 'assets/sprites/soldier.png', 2, 2, 60, 72, true); // armored guard, cyan bg
 
@@ -3419,7 +3444,11 @@ function render() {
     if (s.type === 'enemy') {
       const e = s.obj;
       // Select frame based on relative angle (Doom-style multi-angle)
-      enemyFrameIdx = e.spriteFrames ? getSpriteFrame(e, player.x, player.y) : 0;
+      enemyFrameIdx = e.spriteFrames
+        ? (ANIM_TYPES[e.type]
+            ? (e.deathTimer < 0 ? Math.floor((frameCount + ((e.x * 13) | 0)) / 7) % e.spriteFrames.length : 0)
+            : getSpriteFrame(e, player.x, player.y))
+        : 0;
       spriteData = e.spriteFrames ? e.spriteFrames[enemyFrameIdx] : e.spriteData;
       spW = e.spriteW; spH = e.spriteH;
       alpha = 1;
