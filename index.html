@@ -2414,6 +2414,48 @@ const weapons = [
     fireRate: 40, damage: 80, spread: 0, ammo: 10, maxAmmo: 10,
     reloadTime: 60, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.15, splashR: 3,
     color: '#f44', icon: 'R' },
+  { id: 'nailgun', name: 'Nailgun', price: 200, renderStyle: 'pistol',
+    fireRate: 6, damage: 11, spread: 0.04, ammo: 50, maxAmmo: 50, reloadTime: 45, auto: true, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0, color: '#cba', icon: 'N' },
+  { id: 'akimbo', name: 'Akimbo Pistols', price: 450, renderStyle: 'pistol',
+    fireRate: 8, damage: 18, spread: 0.03, ammo: 24, maxAmmo: 24, reloadTime: 50, auto: false, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0, color: '#fe8', icon: 'K' },
+  { id: 'crossbow', name: 'Crossbow', price: 700, renderStyle: 'chaingun', pierce: true,
+    fireRate: 35, damage: 55, spread: 0.005, ammo: 8, maxAmmo: 8, reloadTime: 50, auto: false, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0, color: '#ad8', icon: 'X' },
+  { id: 'dmr', name: 'Marksman DMR', price: 900, renderStyle: 'chaingun',
+    fireRate: 18, damage: 42, spread: 0.008, ammo: 15, maxAmmo: 15, reloadTime: 55, auto: false, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#cf8', icon: 'D' },
+  { id: 'battlerifle', name: 'Battle Rifle', price: 1100, renderStyle: 'chaingun',
+    fireRate: 6, damage: 18, spread: 0.025, ammo: 35, maxAmmo: 35, reloadTime: 55, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#be7', icon: 'B' },
+  { id: 'dragonsbreath', name: "Dragon's Breath", price: 1300, renderStyle: 'shotgun',
+    fireRate: 28, damage: 13, spread: 0.10, ammo: 6, maxAmmo: 6, reloadTime: 50, auto: false, pellets: 9, sound: 'shotgun', projSpeed: 0, splashR: 0, color: '#f72', icon: 'F' },
+  { id: 'laser', name: 'Laser Rifle', price: 1500, renderStyle: 'chaingun', pierce: true,
+    fireRate: 5, damage: 10, spread: 0.02, ammo: 60, maxAmmo: 60, reloadTime: 50, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#f55', icon: 'L' },
+  { id: 'minigun', name: 'Minigun "Annihilator"', price: 1600, renderStyle: 'chaingun',
+    fireRate: 3, damage: 13, spread: 0.05, ammo: 150, maxAmmo: 150, reloadTime: 100, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#fd4', icon: 'U' },
+  { id: 'grenadelauncher', name: 'Grenade Launcher', price: 1700, renderStyle: 'rocket',
+    fireRate: 38, damage: 60, spread: 0, ammo: 8, maxAmmo: 8, reloadTime: 60, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.12, splashR: 2.5, color: '#9c5', icon: 'E' },
+  { id: 'sniper', name: 'Sniper Rifle', price: 1800, renderStyle: 'chaingun', pierce: true,
+    fireRate: 45, damage: 120, spread: 0, ammo: 5, maxAmmo: 5, reloadTime: 60, auto: false, pellets: 1, sound: 'pistol', projSpeed: 0, splashR: 0, color: '#8cf', icon: 'I' },
+  { id: 'flamethrower', name: 'Flamethrower', price: 2000, renderStyle: 'chaingun', maxRange: 5.5,
+    fireRate: 2, damage: 5, spread: 0.14, ammo: 120, maxAmmo: 120, reloadTime: 70, auto: true, pellets: 3, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#f83', icon: 'Y' },
+  { id: 'stickybomb', name: 'Sticky Bombs', price: 2100, renderStyle: 'rocket',
+    fireRate: 42, damage: 70, spread: 0, ammo: 6, maxAmmo: 6, reloadTime: 65, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.13, splashR: 3, color: '#7d4', icon: 'T' },
+  { id: 'freezeray', name: 'Freeze Ray', price: 2200, renderStyle: 'chaingun', freeze: true,
+    fireRate: 4, damage: 7, spread: 0.03, ammo: 80, maxAmmo: 80, reloadTime: 55, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#8ef', icon: 'Z' },
+  { id: 'cluster', name: 'Cluster Launcher', price: 2300, renderStyle: 'rocket',
+    fireRate: 50, damage: 65, spread: 0, ammo: 5, maxAmmo: 5, reloadTime: 70, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.13, splashR: 3.5, color: '#fa6', icon: 'W' },
+  { id: 'railgun', name: 'Railgun', price: 2400, renderStyle: 'chaingun', pierce: true,
+    fireRate: 40, damage: 110, spread: 0, ammo: 6, maxAmmo: 6, reloadTime: 60, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0, splashR: 0, color: '#6cf', icon: 'J' },
+  { id: 'mortar', name: 'Mortar', price: 2500, renderStyle: 'rocket',
+    fireRate: 60, damage: 90, spread: 0, ammo: 4, maxAmmo: 4, reloadTime: 75, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.1, splashR: 4, color: '#cb6', icon: 'Q' },
+  { id: 'tesla', name: 'Tesla Coil', price: 2600, renderStyle: 'chaingun', chain: 3, chainRange: 3.5,
+    fireRate: 10, damage: 22, spread: 0.02, ammo: 40, maxAmmo: 40, reloadTime: 55, auto: true, pellets: 1, sound: 'chaingun', projSpeed: 0, splashR: 0, color: '#adf', icon: 'V' },
+  { id: 'plasma', name: 'Plasma Cannon', price: 2700, renderStyle: 'rocket',
+    fireRate: 22, damage: 60, spread: 0, ammo: 20, maxAmmo: 20, reloadTime: 60, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.16, splashR: 2.5, color: '#d7f', icon: 'H' },
+  { id: 'gauss', name: 'Gauss Cannon', price: 2800, renderStyle: 'chaingun', pierce: true,
+    fireRate: 50, damage: 150, spread: 0, ammo: 4, maxAmmo: 4, reloadTime: 70, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0, splashR: 0, color: '#7ff', icon: 'G' },
+  { id: 'bfg', name: 'Plasma "BFG"', price: 3000, renderStyle: 'rocket',
+    fireRate: 70, damage: 200, spread: 0, ammo: 4, maxAmmo: 4, reloadTime: 90, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.13, splashR: 5, color: '#9f6', icon: '*' },
+  { id: 'blackhole', name: 'Black Hole Gun', price: 3500, renderStyle: 'rocket',
+    fireRate: 90, damage: 150, spread: 0, ammo: 3, maxAmmo: 3, reloadTime: 100, auto: false, pellets: 1, sound: 'rocket_fire', projSpeed: 0.09, splashR: 6, color: '#b8f', icon: '0' },
 ];
 
 // ============================================================
@@ -4160,12 +4202,14 @@ function renderHUD(W, H) {
   mainCtx.fillText(wp.name.toUpperCase(), W - 30 * s, hudY + 58 * s);
 
   // Weapon rack (modern pills)
-  const rackW = 44 * s;
+  const ownedSlots = [];
+  for (let i = 0; i < weapons.length; i++) if (player.hasWeapon[i]) ownedSlots.push(i);
+  const rackW = Math.min(44 * s, (W * 0.9) / Math.max(1, ownedSlots.length));
   const rackH = 26 * s;
-  const rackStart = W / 2 - (weapons.length * rackW) / 2;
-  for (let i = 0; i < weapons.length; i++) {
-    if (!player.hasWeapon[i]) continue;
-    const rx = rackStart + i * rackW + 2;
+  const rackStart = W / 2 - (ownedSlots.length * rackW) / 2;
+  for (let j = 0; j < ownedSlots.length; j++) {
+    const i = ownedSlots[j];
+    const rx = rackStart + j * rackW + 2;
     const ry = hudY + 12 * s;
     const selected = i === player.weaponIdx;
     // Rounded rect
@@ -4756,34 +4800,57 @@ function fireWeapon() {
     return;
   }
 
-  // Hitscan weapons
+  // Hitscan weapons. Flags: wp.pierce (hit everything in line), wp.freeze
+  // (slow on hit), wp.chain (arc to nearby enemies), wp.maxRange (short reach).
+  const maxReach = wp.maxRange || Infinity;
   for (let p = 0; p < wp.pellets; p++) {
     const spread = (Math.random() - 0.5) * wp.spread * 2;
     const rayAngle = player.angle + spread;
     const rdx = Math.cos(rayAngle), rdy = Math.sin(rayAngle);
     const wallHit = castRay(player.x, player.y, rdx, rdy);
+    const reach = Math.min(wallHit.dist, maxReach);
 
-    let closestEnemy = null, closestDist = wallHit.dist;
+    if (wp.pierce) {
+      // Beam pierces every enemy along the ray
+      let hitAny = false;
+      for (const e of enemies) {
+        if (e.deathTimer >= 0) continue;
+        const ex = e.x - player.x, ey = e.y - player.y;
+        const dot = ex * rdx + ey * rdy;
+        if (dot < 0 || dot > reach) continue;
+        const perpX = ex - rdx * dot, perpY = ey - rdy * dot;
+        if (Math.hypot(perpX, perpY) < e.radius) {
+          damageEnemy(e, wp.damage * (0.8 + Math.random() * 0.4));
+          if (wp.freeze) e.slowTimer = 120;
+          hitAny = true;
+        }
+      }
+      if (hitAny) player.shotsHit++;
+      for (let t = 0.5; t < reach; t += 0.6) {
+        spawnParticles(player.x + rdx * t, player.y + rdy * t, 0, 1, { r: 150, g: 220, b: 255, spread: 0.01, life: 0.4, size: 2 });
+      }
+      continue;
+    }
 
+    let closestEnemy = null, closestDist = reach;
     for (const e of enemies) {
       if (e.deathTimer >= 0) continue;
       const ex = e.x - player.x, ey = e.y - player.y;
       const dot = ex * rdx + ey * rdy;
       if (dot < 0 || dot > closestDist) continue;
       const perpX = ex - rdx * dot, perpY = ey - rdy * dot;
-      const perp = Math.hypot(perpX, perpY);
-      if (perp < e.radius && dot < closestDist) {
+      if (Math.hypot(perpX, perpY) < e.radius && dot < closestDist) {
         closestDist = dot;
         closestEnemy = e;
       }
     }
 
     if (closestEnemy) {
-      const dmg = wp.damage * (0.8 + Math.random() * 0.4);
-      damageEnemy(closestEnemy, dmg);
+      damageEnemy(closestEnemy, wp.damage * (0.8 + Math.random() * 0.4));
+      if (wp.freeze) closestEnemy.slowTimer = 120;
+      if (wp.chain) chainLightning(closestEnemy, wp);
       player.shotsHit++;
-    } else {
-      // Wall hit sparks
+    } else if (wallHit.dist <= maxReach) {
       const hx = player.x + rdx * wallHit.dist;
       const hy = player.y + rdy * wallHit.dist;
       spawnParticles(hx, hy, 0, 4, { r: 255, g: 200, b: 100, spread: 0.03, life: 0.5, size: 2 });
@@ -4841,6 +4908,29 @@ function damageEnemy(e, dmg) {
       });
     }
   }
+}
+
+// Tesla chain: arc from the first hit to nearby enemies, dealing reduced damage.
+function chainLightning(from, wp) {
+  let current = from, hits = 0;
+  const seen = new Set([from]);
+  const range = wp.chainRange || 3.5;
+  while (hits < wp.chain) {
+    let best = null, bestD = range;
+    for (const e of enemies) {
+      if (e.deathTimer >= 0 || seen.has(e)) continue;
+      const d = Math.hypot(e.x - current.x, e.y - current.y);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    if (!best) break;
+    damageEnemy(best, wp.damage * 0.6);
+    if (wp.freeze) best.slowTimer = 120;
+    for (let t = 0; t <= 1; t += 0.2) {
+      spawnParticles(current.x + (best.x - current.x) * t, current.y + (best.y - current.y) * t, 0, 1, { r: 180, g: 220, b: 255, spread: 0.02, life: 0.3, size: 2 });
+    }
+    seen.add(best); current = best; hits++;
+  }
+  lightningFlash = 1;
 }
 
 function startReload() {
@@ -5242,7 +5332,8 @@ function update() {
       case 'alert':
         // Move toward player
         e.angle = angleToPlayer;
-        const moveSpeed = e.speed;
+        if (e.slowTimer > 0) e.slowTimer--;
+        const moveSpeed = e.speed * (e.slowTimer > 0 ? 0.35 : 1);
 
         if (e.melee || dist > 4) {
           const nx = e.x + Math.cos(e.angle) * moveSpeed;
