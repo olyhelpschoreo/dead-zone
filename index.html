@@ -668,17 +668,6 @@ propSprites.barrel = createSpriteCanvas(20, 28, (ctx) => {
   ctx.fillStyle = '#000';
   ctx.beginPath(); ctx.arc(10, 15, 2, 0, Math.PI * 2); ctx.fill();
 });
-propSprites.crate = createSpriteCanvas(22, 22, (ctx) => {
-  ctx.fillStyle = '#8a6530';
-  ctx.fillRect(0, 0, 22, 22);
-  ctx.fillStyle = '#6a4520';
-  ctx.fillRect(1, 1, 20, 2); ctx.fillRect(1, 19, 20, 2);
-  ctx.strokeStyle = '#5a3510';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(2, 2, 18, 18);
-  ctx.beginPath(); ctx.moveTo(2, 2); ctx.lineTo(20, 20); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(20, 2); ctx.lineTo(2, 20); ctx.stroke();
-});
 propSprites.corpse = createSpriteCanvas(32, 16, (ctx) => {
   ctx.fillStyle = '#4a4a3a';
   ctx.fillRect(4, 4, 24, 10);
@@ -708,7 +697,6 @@ propSprites.pillar = createSpriteCanvas(16, 48, (ctx) => {
 const props = [];
 function spawnProps() {
   const propDefs = [
-    { type: 'crate', count: 10 },
     { type: 'corpse', count: 8 },
     { type: 'puddle', count: 6 },
     { type: 'pillar', count: 4 },
