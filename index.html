@@ -716,6 +716,7 @@ function addGoreSplat(x, y, size) {
 
 // Lightning flash system
 let lightningFlash = 0;
+let hitMarker = 0, hitMarkerKill = false; // crosshair hit feedback
 let lightningTimer = 0;
 
 // Pre-generate starfield (more stars, varied sizes)
@@ -4117,6 +4118,25 @@ function renderHUD(W, H) {
   mainCtx.shadowBlur = 0;
   mainCtx.globalAlpha = 1;
 
+  // Hitmarker — four ticks when you damage an enemy (red + bigger on a kill)
+  if (hitMarker > 0) {
+    const hmColor = hitMarkerKill ? '#f33' : '#fff';
+    const hmGap = 7 * s, hmLen = 6 * s + (hitMarkerKill ? 4 : 0);
+    mainCtx.save();
+    mainCtx.globalAlpha = hitMarker / 11;
+    mainCtx.strokeStyle = hmColor;
+    mainCtx.lineWidth = 2;
+    mainCtx.shadowColor = hmColor;
+    mainCtx.shadowBlur = 6;
+    mainCtx.beginPath();
+    for (const [sx, sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      mainCtx.moveTo(cx + sx * hmGap, cy + sy * hmGap);
+      mainCtx.lineTo(cx + sx * (hmGap + hmLen), cy + sy * (hmGap + hmLen));
+    }
+    mainCtx.stroke();
+    mainCtx.restore();
+  }
+
   // --- Modern bottom HUD ---
   const hudH = 85 * s;
   const hudY = H - hudH;
@@ -4862,16 +4882,19 @@ function fireWeapon() {
 
 function damageEnemy(e, dmg) {
   e.health -= dmg;
-  e.hitFlash = 6;
+  e.hitFlash = 8;
   e.state = 'alert';
   player.totalDamageDealt += dmg;
   playSound('hit');
+  if (hitMarker < 7) { hitMarker = 7; hitMarkerKill = false; } // crosshair hit feedback
 
-  spawnParticles(e.x, e.y, 0, 6, { r: 200, g: 20, b: 20, spread: 0.04, life: 0.8, size: 3 });
+  spawnParticles(e.x, e.y, 0, 10, { r: 220, g: 30, b: 25, spread: 0.06, life: 0.9, size: 3.5 });
 
   if (e.health <= 0 && e.deathTimer < 0) {
     e.deathTimer = 0;
     player.kills++;
+    hitMarker = 11; hitMarkerKill = true; // big red kill marker
+    player.shakeAmount = Math.max(player.shakeAmount, 0.22);
     player.score += e.scoreValue * Math.max(1, player.combo);
     player.combo++;
     player.comboTimer = 180;
@@ -5073,6 +5096,7 @@ function update() {
   if (!gameStarted || gameOver) return;
 
   frameCount++;
+  if (hitMarker > 0) hitMarker--;
 
   // Mouse look
   player.angle += mouseDX * 0.002;
